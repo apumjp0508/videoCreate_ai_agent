@@ -381,16 +381,38 @@
     <div class="hero-card-body">
       <span class="tag">AI Video Generator</span>
       <h2>テキストから動画を自動生成</h2>
-      <p>プロンプトを入力するだけで、AIが映像・ナレーション・編集を自動で行います。<br>まずは使用するAIサービスを設定してください。</p>
+      <p>プロンプトを入力するだけで、AIが映像・ナレーション・編集を自動で行います。<br>運営が提供するAIサービスをそのままご利用いただけます。</p>
     </div>
     <div class="hero-card-action">
-      <a href="{% url 'video_ai:provider_list' %}" class="btn-primary">AIサービスを設定する</a>
+      <a href="#" class="btn-primary">動画を作成する</a>
     </div>
   </div>
 
   <!-- Nav cards -->
   <p class="section-heading">メニュー</p>
   <div class="nav-grid">
+    <a href="#" class="nav-card">
+      <span class="nav-card-icon">
+        <svg viewBox="0 0 24 24">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+      </span>
+      <div class="nav-card-text">
+        <p class="nav-card-title">動画を作成する</p>
+        <p class="nav-card-desc">プロンプトを入力してAI動画を生成</p>
+      </div>
+    </a>
+    <a href="#" class="nav-card">
+      <span class="nav-card-icon teal">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/><path d="M12 6v6l4 2"/>
+        </svg>
+      </span>
+      <div class="nav-card-text">
+        <p class="nav-card-title">生成履歴</p>
+        <p class="nav-card-desc">過去に作成した動画の一覧・ダウンロード</p>
+      </div>
+    </a>
     <a href="{% url 'video_ai:provider_list' %}" class="nav-card">
       <span class="nav-card-icon">
         <svg viewBox="0 0 24 24">
@@ -398,8 +420,8 @@
         </svg>
       </span>
       <div class="nav-card-text">
-        <p class="nav-card-title">動画生成AIサービス</p>
-        <p class="nav-card-desc">利用するAIプロバイダーの登録・設定・管理</p>
+        <p class="nav-card-title">動画生成AIサービス管理</p>
+        <p class="nav-card-desc">運営が提供するAIサービスの一覧・確認</p>
       </div>
     </a>
   </div>
@@ -412,8 +434,8 @@
       </svg>
     </span>
     <p class="info-text">
-      <strong>はじめに：</strong>
-      「動画生成AIサービス」から利用したいAIプロバイダーのAPIキーを登録すると、動画生成機能が利用できるようになります。
+      <strong>ご利用について：</strong>
+      本サービスでは運営が用意したAIサービスをそのまま利用できます。APIキーの登録は不要です。
     </p>
   </div>
 
