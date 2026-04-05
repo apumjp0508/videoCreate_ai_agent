@@ -10,14 +10,19 @@ urlpatterns = [
     path('dashboard/', views.DashboardView.as_view(), name='dashboard'),
 
     # -----------------------------------------------------------------------
-    # 動画作成フロー（channel選択 → コンテンツ選択）
+    # 動画作成フロー
     #
-    # 現在はchannel選択画面が未完成のため、channel_id を URLパラメータで直接受け取る。
-    # 単体確認: /content/select/1/ のように直接アクセスできる。
+    # 1. /create/
+    #    「動画を作成する」ボタンの遷移先。
+    #    YouTubeチャンネルの有無でリダイレクト先を振り分ける。
+    #    あり → YouTube選択画面 (google_auth:youtube_select)
+    #    なし → YouTube連携画面 (google_auth:channel_list)
     #
-    # TODO: channel選択画面が完成したら、そちらのフォーム送信先を
-    #       redirect('accounts:content_select', channel_id=選択されたID) に向けるだけでOK。
+    # 2. /content/select/<channel_id>/
+    #    YouTube選択画面でチャンネルを選んだ後に遷移する画面。
+    #    channel_id は YoutubeChannel の DB主キー（整数）。
     # -----------------------------------------------------------------------
+    path('create/', views.CreateVideoView.as_view(), name='create_video'),
     path('content/select/<int:channel_id>/', views.ContentSelectView.as_view(), name='content_select'),
 
     # アップロード画面（content_select から遷移してくる）

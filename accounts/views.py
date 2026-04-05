@@ -1,10 +1,11 @@
 from django.contrib.auth import login, logout
 from django.contrib.auth.views import LoginView
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 
 from .forms import AudioUploadForm, ContentSelectForm, ImageUploadForm, LoginForm, RegisterForm
-from .dummy_data import get_audio_choices, get_channel_name, get_image_choices
+from .dummy_data import get_audio_choices, get_image_choices
+from google_auth.models import YoutubeChannel
 
 
 class RegisterView(View):
@@ -43,28 +44,49 @@ class DashboardView(View):
         return render(request, 'accounts/dashboard.html')
 
 
+class CreateVideoView(View):
+    """
+    「動画を作成する」押下時の分岐ビュー。
+
+    ログイン中ユーザーに紐づくYouTubeチャンネルの有無で遷移先を振り分ける。
+    - チャンネルあり → YouTube選択画面 (google_auth:youtube_select)
+    - チャンネルなし → YouTube連携画面 (google_auth:channel_list)
+    """
+
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return redirect('accounts:login')
+
+        # ログイン中ユーザーのアクティブなYouTubeチャンネルを確認
+        has_channels = YoutubeChannel.objects.filter(
+            user_google_account__user=request.user,
+            is_active=True,
+        ).exists()
+
+        if has_channels:
+            return redirect('google_auth:youtube_select')
+        return redirect('google_auth:channel_list')
+
+
 class ContentSelectView(View):
     """
     スクリプト / 画像 / 音声 を選択する画面（動画作成ステップ2）。
 
-    URLパラメータ channel_id でどのチャンネル向けかを受け取る。
-    現在はchannel選択画面が未完成のため、直接 /content/select/1/ のように
-    アクセスして単体確認できる形にしている。
-
-    TODO: channel選択画面が完成したら、そちらの送信先をこのURLに向けるだけでOK。
+    URLパラメータ channel_id は YoutubeChannel の DB主キー（整数）。
+    YouTube選択画面で選んだチャンネルの channel.id がここに渡される。
     """
 
     def get(self, request, channel_id: int):
         if not request.user.is_authenticated:
             return redirect('accounts:login')
 
-        # チャンネル情報を取得（仮データ）
-        # TODO: DB完成後は get_channel_name() 内部がDB取得に切り替わる
-        channel_name = get_channel_name(channel_id)
+        # DBからチャンネル情報を取得（ログイン中ユーザーのチャンネルのみ許可）
+        channel = get_object_or_404(
+            YoutubeChannel,
+            id=channel_id,
+            user_google_account__user=request.user,
+        )
 
-        # チャンネルに応じた画像・音声の選択肢を取得（仮データ）
-        # TODO: DB完成後は get_image_choices() / get_audio_choices() 内部が
-        #       DB取得に切り替わる。このビューのコードは変更不要。
         image_choices = get_image_choices(channel_id)
         audio_choices = get_audio_choices(channel_id)
 
@@ -76,7 +98,7 @@ class ContentSelectView(View):
         context = {
             'form': form,
             'channel_id': channel_id,
-            'channel_name': channel_name,
+            'channel': channel,
         }
         return render(request, 'accounts/content_select.html', context)
 
@@ -84,7 +106,11 @@ class ContentSelectView(View):
         if not request.user.is_authenticated:
             return redirect('accounts:login')
 
-        channel_name = get_channel_name(channel_id)
+        channel = get_object_or_404(
+            YoutubeChannel,
+            id=channel_id,
+            user_google_account__user=request.user,
+        )
         image_choices = get_image_choices(channel_id)
         audio_choices = get_audio_choices(channel_id)
 
@@ -102,7 +128,7 @@ class ContentSelectView(View):
         context = {
             'form': form,
             'channel_id': channel_id,
-            'channel_name': channel_name,
+            'channel': channel,
         }
         return render(request, 'accounts/content_select.html', context)
 

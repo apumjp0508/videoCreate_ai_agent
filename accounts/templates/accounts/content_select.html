@@ -66,13 +66,13 @@
 
   /* ===== Breadcrumb ===== */
   .breadcrumb {
-    font-size: 0.75rem; color: #475569;
+    font-size: 0.78rem; color: #64748b;
     margin-bottom: 1.5rem;
     display: flex; align-items: center; gap: 0.4rem;
   }
-  .breadcrumb a { color: #6337ff; text-decoration: none; }
-  .breadcrumb a:hover { text-decoration: underline; }
-  .breadcrumb .sep { color: #334155; }
+  .breadcrumb a { color: #818cf8; text-decoration: none; }
+  .breadcrumb a:hover { text-decoration: underline; color: #a5b4fc; }
+  .breadcrumb .sep { color: #475569; }
 
   /* ===== Page heading ===== */
   .page-eyebrow {
@@ -82,7 +82,7 @@
   .page-title {
     font-size: 1.5rem; font-weight: 800; color: #f1f5f9; margin-bottom: 0.4rem;
   }
-  .page-sub { font-size: 0.85rem; color: #64748b; margin-bottom: 2rem; }
+  .page-sub { font-size: 0.9rem; color: #94a3b8; margin-bottom: 2rem; line-height: 1.65; }
 
   /* ===== Channel badge ===== */
   .channel-badge {
@@ -113,11 +113,11 @@
 
   .field-label {
     display: block;
-    font-size: 0.8rem; font-weight: 600; color: #94a3b8;
-    margin-bottom: 0.5rem; letter-spacing: 0.04em;
+    font-size: 0.83rem; font-weight: 600; color: #cbd5e1;
+    margin-bottom: 0.5rem; letter-spacing: 0.02em;
   }
   .field-hint {
-    font-size: 0.73rem; color: #475569; margin-top: 0.35rem;
+    font-size: 0.78rem; color: #64748b; margin-top: 0.4rem; line-height: 1.6;
   }
 
   .btn-add-link {
@@ -204,7 +204,7 @@
   .btn-primary:hover { opacity: 0.9; box-shadow: 0 6px 24px rgba(99,55,255,0.5); }
 
   .btn-back {
-    font-size: 0.82rem; color: #475569; text-decoration: none;
+    font-size: 0.84rem; color: #64748b; text-decoration: none;
     display: inline-flex; align-items: center; gap: 0.35rem;
     transition: color 0.2s;
   }
@@ -258,8 +258,7 @@
   <nav class="breadcrumb">
     <a href="{% url 'accounts:dashboard' %}">ダッシュボード</a>
     <span class="sep">›</span>
-    {# TODO: channel選択画面が完成したら、ここにそのページへのリンクを追加する #}
-    <span>チャンネル選択</span>
+    <a href="{% url 'google_auth:youtube_select' %}">チャンネル選択</a>
     <span class="sep">›</span>
     <span>コンテンツ選択</span>
   </nav>
@@ -272,17 +271,7 @@
   <!-- 選択中チャンネルの表示 -->
   <div class="channel-badge">
     <span class="dot"></span>
-    チャンネル：{{ channel_name }}（ID: {{ channel_id }}）
-  </div>
-
-  <!--
-    開発用メモ: channel選択画面が未完成のため、直接 URLパラメータで channel_id を受け取っている。
-    TODO: channel選択画面が完成したら、このnoticeは削除してOK。
-  -->
-  <div class="todo-notice">
-    ⚠️ 開発中: channel選択画面はまだ未実装です。<br>
-    現在は URL で channel_id を直接指定して確認できます。<br>
-    例: <code>/content/select/1/</code> &nbsp;/&nbsp; <code>/content/select/2/</code>
+    チャンネル：{{ channel.title }}（YouTube ID: {{ channel.youtube_channel_id }}）
   </div>
 
   <!-- フォーム -->
@@ -349,12 +338,8 @@
 
       <!-- ===== ボタン ===== -->
       <div class="form-actions">
-        {#
-          TODO: channel選択画面が完成したら、以下の href を
-                url 'accounts:channel_select' などに変更する
-        #}
-        <a href="{% url 'accounts:dashboard' %}" class="btn-back">
-          ← ダッシュボードに戻る
+        <a href="{% url 'google_auth:youtube_select' %}" class="btn-back">
+          ← チャンネル選択に戻る
         </a>
         <button type="submit" class="btn-primary">
           動画を作成する →
