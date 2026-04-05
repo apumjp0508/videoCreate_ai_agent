@@ -1,0 +1,9 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}YouTube連携エラー{% endblock %}
+
+{% block content %}
+<h1>YouTube連携エラー</h1>
+<p>{{ error }}</p>
+<a href="{% url 'accounts:youtube_connect' %}">再試行する</a>
+{% endblock %}

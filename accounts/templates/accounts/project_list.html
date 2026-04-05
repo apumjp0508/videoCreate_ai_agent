@@ -1,0 +1,50 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}プロジェクト一覧{% endblock %}
+
+{% block content %}
+<h1>プロジェクト一覧</h1>
+<a href="{% url 'accounts:project_create' %}">+ 新規プロジェクト</a>
+
+{% if projects %}
+<table border="1" cellpadding="8" cellspacing="0">
+    <thead>
+        <tr>
+            <th>名前</th>
+            <th>プラットフォーム</th>
+            <th>言語</th>
+            <th>地域</th>
+            <th>ジャンル</th>
+            <th>ステータス</th>
+            <th>作成日</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for project in projects %}
+        <tr>
+            <td>{{ project.name }}</td>
+            <td>{{ project.target_platform }}</td>
+            <td>{{ project.target_language }}</td>
+            <td>{{ project.target_region }}</td>
+            <td>{{ project.genre }}</td>
+            <td>{{ project.status }}</td>
+            <td>{{ project.created_at|date:"Y/m/d" }}</td>
+            <td>
+                <a href="{% url 'accounts:project_update' project.pk %}">編集</a>
+                <form method="post" action="{% url 'accounts:project_delete' project.pk %}" style="display:inline;" onsubmit="return confirm('削除しますか？')">
+                    {% csrf_token %}
+                    <button type="submit">削除</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>プロジェクトがありません。</p>
+{% endif %}
+
+<hr>
+<a href="{% url 'accounts:dashboard' %}">ダッシュボードに戻る</a>
+{% endblock %}

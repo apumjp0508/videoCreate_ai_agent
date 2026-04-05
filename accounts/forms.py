@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
-from .models import User
+from .models import Project, User
 
 
 class RegisterForm(forms.ModelForm):
@@ -27,3 +27,12 @@ class RegisterForm(forms.ModelForm):
 
 class LoginForm(AuthenticationForm):
     pass
+
+
+class ProjectForm(forms.ModelForm):
+    class Meta:
+        model = Project
+        fields = ['name', 'description', 'target_platform', 'target_language', 'target_region', 'genre', 'status']
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 4}),
+        }

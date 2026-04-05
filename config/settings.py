@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'accounts',
+    'channel_select'
 ]
 
 MIDDLEWARE = [
@@ -86,6 +87,13 @@ DATABASES = {
 }
 
 AUTH_USER_MODEL = 'accounts.User'
+
+# トークン暗号化キー (Fernet形式の32バイトURLsafe base64エンコード済みキー)
+ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', '')
+
+# Google OAuth2
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
 
 
 # Password validation

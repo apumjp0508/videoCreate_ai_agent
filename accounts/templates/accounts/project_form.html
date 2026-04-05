@@ -1,0 +1,14 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}{% if project %}プロジェクト編集{% else %}プロジェクト作成{% endif %}{% endblock %}
+
+{% block content %}
+<h1>{% if project %}プロジェクト編集{% else %}新規プロジェクト{% endif %}</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">{% if project %}更新{% else %}作成{% endif %}</button>
+    <a href="{% url 'accounts:project_list' %}">キャンセル</a>
+</form>
+{% endblock %}

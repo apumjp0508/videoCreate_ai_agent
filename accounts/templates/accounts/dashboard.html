@@ -5,6 +5,21 @@
 {% block content %}
 <h1>Dashboard</h1>
 <p>Welcome, {{ user.email }}</p>
+
+<h2>YouTube チャンネル</h2>
+{% if youtube_channel %}
+    <p>連携済み: {{ youtube_channel.channel_name }}</p>
+    <a href="{% url 'accounts:youtube_connect' %}">別のチャンネルに再連携する</a>
+{% else %}
+    <p>YouTubeチャンネルが連携されていません。</p>
+    <a href="{% url 'accounts:youtube_connect' %}">YouTubeチャンネルを連携する</a>
+{% endif %}
+
+<hr>
+<h2>プロジェクト</h2>
+<a href="{% url 'accounts:project_list' %}">プロジェクト一覧</a>
+
+<hr>
 <form method="post" action="{% url 'accounts:logout' %}">
     {% csrf_token %}
     <button type="submit">Logout</button>
