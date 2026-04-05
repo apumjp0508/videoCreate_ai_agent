@@ -1,0 +1,368 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}コンテンツ選択 — VideoCreate AI{% endblock %}
+
+{% block content %}
+<style>
+  /* ===== Reset & Base ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: #0a0c14;
+    background-image:
+      radial-gradient(ellipse 70% 50% at 15% 5%,  rgba(99, 55, 255, 0.15) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 85% 90%, rgba(0, 200, 255, 0.10) 0%, transparent 50%);
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    color: #e2e8f0;
+  }
+
+  /* ===== Header ===== */
+  .top-header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10, 12, 20, 0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    padding: 0 2rem; height: 60px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header-brand {
+    display: flex; align-items: center; gap: 0.6rem;
+    text-decoration: none;
+  }
+  .header-brand .logo-icon {
+    width: 30px; height: 30px; border-radius: 7px;
+    background: linear-gradient(135deg, #6337ff, #00c8ff);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .header-brand .logo-icon svg { width: 16px; height: 16px; fill: #fff; }
+  .header-brand .logo-text {
+    font-size: 0.95rem; font-weight: 700;
+    background: linear-gradient(90deg, #a78bfa, #38bdf8);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .header-right { display: flex; align-items: center; gap: 1rem; }
+  .user-badge { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: #94a3b8; }
+  .user-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, #6337ff, #00c8ff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem; font-weight: 700; color: #fff;
+  }
+  .btn-logout {
+    padding: 0.4rem 0.9rem; font-size: 0.78rem; font-weight: 600;
+    color: #94a3b8; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+    cursor: pointer; transition: background 0.2s, color 0.2s;
+  }
+  .btn-logout:hover { background: rgba(255,255,255,0.09); color: #e2e8f0; }
+
+  /* ===== Page body ===== */
+  .page-body {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2.5rem 2rem 4rem;
+  }
+
+  /* ===== Breadcrumb ===== */
+  .breadcrumb {
+    font-size: 0.75rem; color: #475569;
+    margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: 0.4rem;
+  }
+  .breadcrumb a { color: #6337ff; text-decoration: none; }
+  .breadcrumb a:hover { text-decoration: underline; }
+  .breadcrumb .sep { color: #334155; }
+
+  /* ===== Page heading ===== */
+  .page-eyebrow {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: #6337ff; margin-bottom: 0.5rem;
+  }
+  .page-title {
+    font-size: 1.5rem; font-weight: 800; color: #f1f5f9; margin-bottom: 0.4rem;
+  }
+  .page-sub { font-size: 0.85rem; color: #64748b; margin-bottom: 2rem; }
+
+  /* ===== Channel badge ===== */
+  .channel-badge {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: rgba(99,55,255,0.12);
+    border: 1px solid rgba(99,55,255,0.3);
+    border-radius: 10px;
+    padding: 0.45rem 1rem;
+    font-size: 0.82rem; font-weight: 600; color: #a78bfa;
+    margin-bottom: 2rem;
+  }
+  .channel-badge .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #6337ff;
+  }
+
+  /* ===== Form card ===== */
+  .form-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 2rem;
+  }
+
+  /* ===== Field group ===== */
+  .field-group { margin-bottom: 1.75rem; }
+  .field-group:last-of-type { margin-bottom: 0; }
+
+  .field-label {
+    display: block;
+    font-size: 0.8rem; font-weight: 600; color: #94a3b8;
+    margin-bottom: 0.5rem; letter-spacing: 0.04em;
+  }
+  .field-hint {
+    font-size: 0.73rem; color: #475569; margin-top: 0.35rem;
+  }
+
+  .btn-add-link {
+    display: inline-block;
+    margin-top: 0.6rem;
+    font-size: 0.78rem; font-weight: 600;
+    color: #38bdf8;
+    text-decoration: none;
+    border: 1px solid rgba(56,189,248,0.3);
+    border-radius: 7px;
+    padding: 0.3rem 0.75rem;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .btn-add-link:hover {
+    background: rgba(56,189,248,0.08);
+    border-color: rgba(56,189,248,0.55);
+  }
+
+  /* テキストエリア */
+  .field-group textarea {
+    width: 100%; padding: 0.75rem 1rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: #e2e8f0; font-size: 0.88rem; line-height: 1.6;
+    font-family: inherit;
+    resize: vertical;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  .field-group textarea:focus {
+    border-color: rgba(99,55,255,0.5);
+    background: rgba(99,55,255,0.05);
+  }
+
+  /* セレクトボックス */
+  .field-group select {
+    width: 100%; padding: 0.7rem 1rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: #e2e8f0; font-size: 0.88rem;
+    font-family: inherit;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field-group select:focus {
+    border-color: rgba(99,55,255,0.5);
+    background-color: rgba(99,55,255,0.05);
+  }
+
+  /* エラー表示 */
+  .field-errors {
+    margin-top: 0.4rem;
+    font-size: 0.75rem; color: #f87171;
+  }
+
+  /* ===== Divider ===== */
+  .form-divider {
+    border: none; border-top: 1px solid rgba(255,255,255,0.06);
+    margin: 1.75rem 0;
+  }
+
+  /* ===== Buttons ===== */
+  .form-actions {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; margin-top: 2rem; flex-wrap: wrap;
+  }
+  .btn-primary {
+    display: inline-block;
+    padding: 0.75rem 2rem;
+    background: linear-gradient(135deg, #6337ff 0%, #3b82f6 60%, #00c8ff 100%);
+    color: #fff; font-size: 0.88rem; font-weight: 700;
+    border: none; border-radius: 10px; cursor: pointer;
+    transition: opacity 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 18px rgba(99,55,255,0.35);
+    text-decoration: none; letter-spacing: 0.04em;
+  }
+  .btn-primary:hover { opacity: 0.9; box-shadow: 0 6px 24px rgba(99,55,255,0.5); }
+
+  .btn-back {
+    font-size: 0.82rem; color: #475569; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    transition: color 0.2s;
+  }
+  .btn-back:hover { color: #94a3b8; }
+
+  /* ===== TODO notice ===== */
+  .todo-notice {
+    background: rgba(251,191,36,0.07);
+    border: 1px solid rgba(251,191,36,0.2);
+    border-radius: 10px;
+    padding: 0.85rem 1.1rem;
+    font-size: 0.78rem; color: #fbbf24;
+    margin-bottom: 1.75rem;
+    line-height: 1.5;
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 640px) {
+    .top-header { padding: 0 1rem; }
+    .page-body { padding: 1.5rem 1rem 3rem; }
+    .form-card { padding: 1.5rem; }
+    .form-actions { flex-direction: column-reverse; align-items: stretch; }
+    .btn-primary { text-align: center; }
+  }
+</style>
+
+<!-- ===== Header ===== -->
+<header class="top-header">
+  <a href="{% url 'accounts:dashboard' %}" class="header-brand">
+    <span class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    </span>
+    <span class="logo-text">VideoCreate AI</span>
+  </a>
+  <div class="header-right">
+    <div class="user-badge">
+      <span class="user-avatar">{{ user.email|first|upper }}</span>
+      <span>{{ user.email }}</span>
+    </div>
+    <form method="post" action="{% url 'accounts:logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn-logout">ログアウト</button>
+    </form>
+  </div>
+</header>
+
+<!-- ===== Main ===== -->
+<div class="page-body">
+
+  <!-- パンくず -->
+  <nav class="breadcrumb">
+    <a href="{% url 'accounts:dashboard' %}">ダッシュボード</a>
+    <span class="sep">›</span>
+    {# TODO: channel選択画面が完成したら、ここにそのページへのリンクを追加する #}
+    <span>チャンネル選択</span>
+    <span class="sep">›</span>
+    <span>コンテンツ選択</span>
+  </nav>
+
+  <!-- ページタイトル -->
+  <p class="page-eyebrow">Step 2 / 2</p>
+  <h1 class="page-title">コンテンツを選択してください</h1>
+  <p class="page-sub">スクリプト・画像・音声を設定して動画を作成します。</p>
+
+  <!-- 選択中チャンネルの表示 -->
+  <div class="channel-badge">
+    <span class="dot"></span>
+    チャンネル：{{ channel_name }}（ID: {{ channel_id }}）
+  </div>
+
+  <!--
+    開発用メモ: channel選択画面が未完成のため、直接 URLパラメータで channel_id を受け取っている。
+    TODO: channel選択画面が完成したら、このnoticeは削除してOK。
+  -->
+  <div class="todo-notice">
+    ⚠️ 開発中: channel選択画面はまだ未実装です。<br>
+    現在は URL で channel_id を直接指定して確認できます。<br>
+    例: <code>/content/select/1/</code> &nbsp;/&nbsp; <code>/content/select/2/</code>
+  </div>
+
+  <!-- フォーム -->
+  <div class="form-card">
+    <form method="post">
+      {% csrf_token %}
+
+      <!-- ===== スクリプト ===== -->
+      <div class="field-group">
+        <label class="field-label" for="{{ form.script.id_for_label }}">
+          スクリプト
+        </label>
+        {{ form.script }}
+        <p class="field-hint">
+          動画のナレーションや説明文を入力してください。<br>
+          {# TODO: 将来的には「定型文から選択」や「AI自動生成」に置き換える可能性あり #}
+        </p>
+        {% if form.script.errors %}
+          <div class="field-errors">{{ form.script.errors }}</div>
+        {% endif %}
+      </div>
+
+      <hr class="form-divider">
+
+      <!-- ===== 画像 ===== -->
+      <div class="field-group">
+        <label class="field-label" for="{{ form.image.id_for_label }}">
+          画像
+        </label>
+        {{ form.image }}
+        <p class="field-hint">
+          このチャンネルで使用できる背景画像を選択してください。<br>
+          {# TODO: DB完成後はチャンネルに紐づく画像一覧をDBから取得する #}
+          {# 現在は仮データを表示しています #}
+        </p>
+        <a href="{% url 'accounts:image_upload' channel_id=channel_id %}" class="btn-add-link">
+          ＋ 画像を追加する
+        </a>
+        {% if form.image.errors %}
+          <div class="field-errors">{{ form.image.errors }}</div>
+        {% endif %}
+      </div>
+
+      <hr class="form-divider">
+
+      <!-- ===== 音声 ===== -->
+      <div class="field-group">
+        <label class="field-label" for="{{ form.audio.id_for_label }}">
+          音声 / BGM
+        </label>
+        {{ form.audio }}
+        <p class="field-hint">
+          このチャンネルで使用できる音声を選択してください。<br>
+          {# TODO: DB完成後はチャンネルに紐づく音声一覧をDBから取得する #}
+          {# 現在は仮データを表示しています #}
+        </p>
+        <a href="{% url 'accounts:audio_upload' channel_id=channel_id %}" class="btn-add-link">
+          ＋ 音声を追加する
+        </a>
+        {% if form.audio.errors %}
+          <div class="field-errors">{{ form.audio.errors }}</div>
+        {% endif %}
+      </div>
+
+      <!-- ===== ボタン ===== -->
+      <div class="form-actions">
+        {#
+          TODO: channel選択画面が完成したら、以下の href を
+                url 'accounts:channel_select' などに変更する
+        #}
+        <a href="{% url 'accounts:dashboard' %}" class="btn-back">
+          ← ダッシュボードに戻る
+        </a>
+        <button type="submit" class="btn-primary">
+          動画を作成する →
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+</div>
+{% endblock %}
