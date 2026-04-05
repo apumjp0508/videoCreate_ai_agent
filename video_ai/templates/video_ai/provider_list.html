@@ -1,0 +1,47 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}AIサービス一覧{% endblock %}
+
+{% block content %}
+<h1>AIサービス一覧</h1>
+<p>ログイン中: {{ user.email }}</p>
+
+<a href="{% url 'accounts:dashboard' %}">← ダッシュボードへ戻る</a>
+
+<hr>
+
+<div style="display: flex; flex-direction: column; gap: 20px; max-width: 600px; margin-top: 20px;">
+  {% for item in provider_data %}
+  <div style="border: 1px solid #ccc; border-radius: 8px; padding: 20px;">
+    <h2 style="margin-top: 0;">{{ item.provider.provider_name }}</h2>
+    <p>API URL: <code>{{ item.provider.api_base_url }}</code></p>
+    {% if item.provider.docs_url %}
+    <p>公式ドキュメント: <a href="{{ item.provider.docs_url }}" target="_blank" rel="noopener noreferrer">{{ item.provider.docs_url }}</a></p>
+    {% endif %}
+
+    {% if item.credential %}
+      <p>APIキー:
+        <strong style="color: green;">登録済み</strong>
+        {% if item.credential.test_status == 'success' %}
+          <span style="color: green;">（テスト成功）</span>
+        {% elif item.credential.test_status == 'failed' %}
+          <span style="color: red;">（テスト失敗）</span>
+        {% else %}
+          <span style="color: gray;">（未テスト）</span>
+        {% endif %}
+      </p>
+      <a href="{% url 'video_ai:credential_detail' provider_id=item.provider.id %}">
+        <button>設定を見る</button>
+      </a>
+    {% else %}
+      <p>APIキー: <strong style="color: gray;">未登録</strong></p>
+      <a href="{% url 'video_ai:credential_register' provider_id=item.provider.id %}">
+        <button>APIキーを登録</button>
+      </a>
+    {% endif %}
+  </div>
+  {% empty %}
+  <p>利用可能なAIサービスがありません。</p>
+  {% endfor %}
+</div>
+{% endblock %}

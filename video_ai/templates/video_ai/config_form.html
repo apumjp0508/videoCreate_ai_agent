@@ -1,0 +1,32 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}{% if action == 'create' %}利用設定を追加{% else %}利用設定を編集{% endif %} - {{ provider.provider_name }}{% endblock %}
+
+{% block content %}
+<h1>{% if action == 'create' %}利用設定を追加{% else %}利用設定を編集{% endif %}</h1>
+
+<a href="{% url 'video_ai:credential_detail' provider_id=provider.id %}">← 設定ページへ戻る</a>
+
+<hr>
+
+<div style="max-width: 500px; margin-top: 20px;">
+  <p>サービス: <strong>{{ provider.provider_name }}</strong></p>
+
+  <form method="post">
+    {% csrf_token %}
+
+    {% for field in form %}
+    <div style="margin-bottom: 16px;">
+      <label for="{{ field.id_for_label }}"><strong>{{ field.label }}</strong></label><br>
+      {{ field }}
+      {% if field.errors %}
+        <p style="color: red;">{{ field.errors }}</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    <button type="submit">{% if action == 'create' %}追加する{% else %}更新する{% endif %}</button>
+    <a href="{% url 'video_ai:credential_detail' provider_id=provider.id %}" style="margin-left: 12px;">キャンセル</a>
+  </form>
+</div>
+{% endblock %}

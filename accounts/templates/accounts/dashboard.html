@@ -5,6 +5,13 @@
 {% block content %}
 <h1>Dashboard</h1>
 <p>Welcome, {{ user.email }}</p>
+
+<nav style="margin: 20px 0;">
+  <ul style="list-style: none; padding: 0; display: flex; gap: 16px;">
+    <li><a href="{% url 'video_ai:provider_list' %}">動画生成AIサービス管理</a></li>
+  </ul>
+</nav>
+
 <form method="post" action="{% url 'accounts:logout' %}">
     {% csrf_token %}
     <button type="submit">Logout</button>
