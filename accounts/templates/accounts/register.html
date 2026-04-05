@@ -1,13 +1,451 @@
 {% extends "accounts/base.html" %}
 
-{% block title %}Register{% endblock %}
+{% block title %}新規登録 — VideoCreate AI{% endblock %}
 
 {% block content %}
-<h1>Register</h1>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Register</button>
-</form>
-<p>Already have an account? <a href="{% url 'accounts:login' %}">Login</a></p>
+<style>
+  /* ===== Reset & Base ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: #0a0c14;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 80% 10%, rgba(0, 200, 255, 0.16) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 20% 80%, rgba(99, 55, 255, 0.14) 0%, transparent 55%),
+      radial-gradient(ellipse 40% 40% at 50% 40%, rgba(255, 60, 120, 0.06) 0%, transparent 60%);
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+
+  /* ===== Outer wrapper ===== */
+  .register-wrapper {
+    width: 100%;
+    max-width: 960px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 32px 80px rgba(0,0,0,0.6);
+  }
+
+  /* ===== Left panel ===== */
+  .hero-panel {
+    background: linear-gradient(135deg, rgba(0,180,255,0.22) 0%, rgba(99,55,255,0.22) 55%, rgba(255,60,120,0.10) 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-right: 1px solid rgba(255,255,255,0.08);
+    padding: 3.5rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-panel::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,200,255,0.22) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-panel::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: -60px;
+    width: 240px; height: 240px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(99,55,255,0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .brand-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .brand-logo .logo-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #6337ff, #00c8ff);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .brand-logo .logo-icon svg {
+    width: 20px; height: 20px; fill: #fff;
+  }
+
+  .brand-logo .logo-text {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    background: linear-gradient(90deg, #a78bfa, #38bdf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #00c8ff;
+    border: 1px solid rgba(0,200,255,0.35);
+    border-radius: 20px;
+    padding: 0.25rem 0.75rem;
+    margin-bottom: 1.25rem;
+    width: fit-content;
+  }
+
+  .hero-headline {
+    font-size: 1.9rem;
+    font-weight: 800;
+    line-height: 1.25;
+    margin-bottom: 1.1rem;
+    background: linear-gradient(135deg, #f1f5f9 30%, #38bdf8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: #94a3b8;
+    margin-bottom: 2rem;
+  }
+
+  .hero-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .hero-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .step-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6337ff, #00c8ff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .step-text {
+    font-size: 0.83rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+  }
+
+  .step-text strong {
+    display: block;
+    color: #e2e8f0;
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  /* ===== Right panel (form) ===== */
+  .form-panel {
+    background: rgba(15, 18, 30, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 3.5rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .form-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 0.4rem;
+  }
+
+  .form-subtitle {
+    font-size: 0.83rem;
+    color: #64748b;
+    margin-bottom: 2rem;
+  }
+
+  /* ===== Non-field errors ===== */
+  .error-box {
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.82rem;
+    color: #fca5a5;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  /* ===== Form fields ===== */
+  .field-group {
+    margin-bottom: 1.1rem;
+  }
+
+  .field-group label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+    margin-bottom: 0.45rem;
+  }
+
+  .field-group input {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-size: 0.92rem;
+    color: #f1f5f9;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  }
+
+  .field-group input::placeholder { color: #475569; }
+
+  .field-group input:focus {
+    border-color: rgba(0, 200, 255, 0.55);
+    background: rgba(0, 200, 255, 0.05);
+    box-shadow: 0 0 0 3px rgba(0,200,255,0.12);
+  }
+
+  .field-group input.has-error {
+    border-color: rgba(248, 113, 113, 0.5);
+  }
+
+  .field-error {
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    color: #f87171;
+  }
+
+  /* ===== Submit button ===== */
+  .btn-register {
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.85rem 1rem;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #00c8ff 0%, #3b82f6 50%, #6337ff 100%);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: opacity 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 20px rgba(0,200,255,0.30);
+  }
+
+  .btn-register:hover {
+    opacity: 0.92;
+    box-shadow: 0 6px 28px rgba(0,200,255,0.45);
+  }
+
+  .btn-register:active { opacity: 0.85; }
+
+  /* ===== Login link ===== */
+  .login-link {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 0.82rem;
+    color: #64748b;
+  }
+
+  .login-link a {
+    color: #38bdf8;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s;
+  }
+
+  .login-link a:hover { color: #7dd3fc; text-decoration: underline; }
+
+  /* ===== Divider ===== */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    margin: 1.5rem 0;
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 680px) {
+    .register-wrapper {
+      grid-template-columns: 1fr;
+      max-width: 420px;
+      border-radius: 16px;
+    }
+
+    .hero-panel {
+      padding: 2rem 1.75rem 1.75rem;
+      border-right: none;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .hero-headline { font-size: 1.5rem; }
+    .hero-sub { display: none; }
+    .hero-steps { display: none; }
+
+    .form-panel { padding: 2rem 1.75rem 2.5rem; }
+  }
+</style>
+
+<div class="register-wrapper">
+
+  <!-- ===== Left: Hero panel ===== -->
+  <aside class="hero-panel" aria-hidden="true">
+    <div class="brand-logo">
+      <span class="logo-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+      </span>
+      <span class="logo-text">VideoCreate AI</span>
+    </div>
+
+    <span class="hero-tag">Join the Platform</span>
+
+    <h1 class="hero-headline">創造を、<br>はじめよう。</h1>
+
+    <p class="hero-sub">
+      アカウントを作成して、AIによる動画自動生成を体験してください。<br>
+      テキスト一つで、プロクオリティの映像が生まれます。
+    </p>
+
+    <div class="hero-steps">
+      <div class="hero-step">
+        <span class="step-num">1</span>
+        <div class="step-text">
+          <strong>アカウント登録</strong>
+          メールアドレスで今すぐ無料登録
+        </div>
+      </div>
+      <div class="hero-step">
+        <span class="step-num">2</span>
+        <div class="step-text">
+          <strong>プロンプトを入力</strong>
+          作りたい動画のイメージをテキストで伝える
+        </div>
+      </div>
+      <div class="hero-step">
+        <span class="step-num">3</span>
+        <div class="step-text">
+          <strong>AIが動画を生成</strong>
+          数秒〜数分で完成した映像をダウンロード
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== Right: Register form ===== -->
+  <main class="form-panel">
+    <h2 class="form-title">アカウントを作成</h2>
+    <p class="form-subtitle">無料ではじめられます。クレジットカード不要。</p>
+
+    {% if form.non_field_errors %}
+    <div class="error-box" role="alert">
+      {% for error in form.non_field_errors %}
+        <span>{{ error }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <div class="field-group">
+        <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+        <input
+          type="email"
+          id="{{ form.email.id_for_label }}"
+          name="{{ form.email.html_name }}"
+          value="{{ form.email.value|default:'' }}"
+          placeholder="your@email.com"
+          autocomplete="email"
+          {% if form.email.errors %}class="has-error"{% endif %}
+          required
+        >
+        {% if form.email.errors %}
+          <div class="field-error" role="alert">
+            {% for error in form.email.errors %}{{ error }}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="field-group">
+        <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+        <input
+          type="password"
+          id="{{ form.password.id_for_label }}"
+          name="{{ form.password.html_name }}"
+          placeholder="パスワードを入力"
+          autocomplete="new-password"
+          {% if form.password.errors %}class="has-error"{% endif %}
+          required
+        >
+        {% if form.password.errors %}
+          <div class="field-error" role="alert">
+            {% for error in form.password.errors %}{{ error }}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="field-group">
+        <label for="{{ form.password_confirm.id_for_label }}">{{ form.password_confirm.label }}</label>
+        <input
+          type="password"
+          id="{{ form.password_confirm.id_for_label }}"
+          name="{{ form.password_confirm.html_name }}"
+          placeholder="パスワードを再入力"
+          autocomplete="new-password"
+          {% if form.password_confirm.errors %}class="has-error"{% endif %}
+          required
+        >
+        {% if form.password_confirm.errors %}
+          <div class="field-error" role="alert">
+            {% for error in form.password_confirm.errors %}{{ error }}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn-register">アカウントを作成</button>
+    </form>
+
+    <div class="divider"></div>
+
+    <p class="login-link">
+      すでにアカウントをお持ちですか？&nbsp;
+      <a href="{% url 'accounts:login' %}">ログインはこちら</a>
+    </p>
+  </main>
+
+</div>
 {% endblock %}
