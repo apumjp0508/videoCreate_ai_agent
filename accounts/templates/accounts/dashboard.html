@@ -1,19 +1,421 @@
 {% extends "accounts/base.html" %}
 
-{% block title %}Dashboard{% endblock %}
+{% block title %}ダッシュボード — VideoCreate AI{% endblock %}
 
 {% block content %}
-<h1>Dashboard</h1>
-<p>Welcome, {{ user.email }}</p>
+<style>
+  /* ===== Reset & Base ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-<nav style="margin: 20px 0;">
-  <ul style="list-style: none; padding: 0; display: flex; gap: 16px;">
-    <li><a href="{% url 'video_ai:provider_list' %}">動画生成AIサービス管理</a></li>
-  </ul>
-</nav>
+  body {
+    min-height: 100vh;
+    background: #0a0c14;
+    background-image:
+      radial-gradient(ellipse 70% 50% at 15% 5%, rgba(99, 55, 255, 0.15) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 85% 90%, rgba(0, 200, 255, 0.10) 0%, transparent 50%),
+      radial-gradient(ellipse 35% 35% at 60% 30%, rgba(255, 60, 120, 0.05) 0%, transparent 55%);
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    color: #e2e8f0;
+  }
 
-<form method="post" action="{% url 'accounts:logout' %}">
-    {% csrf_token %}
-    <button type="submit">Logout</button>
-</form>
+  /* ===== Header ===== */
+  .top-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10, 12, 20, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    padding: 0 2rem;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    text-decoration: none;
+  }
+
+  .header-brand .logo-icon {
+    width: 30px; height: 30px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, #6337ff, #00c8ff);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .header-brand .logo-icon svg {
+    width: 16px; height: 16px; fill: #fff;
+  }
+
+  .header-brand .logo-text {
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    background: linear-gradient(90deg, #a78bfa, #38bdf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .user-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: #94a3b8;
+  }
+
+  .user-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6337ff, #00c8ff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .btn-logout {
+    padding: 0.4rem 0.9rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #94a3b8;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+  }
+
+  .btn-logout:hover {
+    background: rgba(255,255,255,0.09);
+    color: #e2e8f0;
+    border-color: rgba(255,255,255,0.18);
+  }
+
+  /* ===== Page body ===== */
+  .page-body {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2.5rem 2rem 4rem;
+  }
+
+  /* ===== Welcome section ===== */
+  .welcome-section {
+    margin-bottom: 2.5rem;
+  }
+
+  .welcome-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #6337ff;
+    margin-bottom: 0.5rem;
+  }
+
+  .welcome-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #f1f5f9;
+    margin-bottom: 0.5rem;
+  }
+
+  .welcome-title span {
+    background: linear-gradient(90deg, #a78bfa, #38bdf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .welcome-sub {
+    font-size: 0.87rem;
+    color: #64748b;
+  }
+
+  /* ===== Section heading ===== */
+  .section-heading {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #475569;
+    margin-bottom: 1rem;
+  }
+
+  /* ===== Hero action card ===== */
+  .hero-card {
+    background: linear-gradient(135deg, rgba(99,55,255,0.22) 0%, rgba(0,180,255,0.18) 60%, rgba(255,60,120,0.08) 100%);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 2rem 2.5rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-card::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,200,255,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-card-body .tag {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #38bdf8;
+    border: 1px solid rgba(56,189,248,0.35);
+    border-radius: 20px;
+    padding: 0.2rem 0.65rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .hero-card-body h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 0.4rem;
+    line-height: 1.3;
+  }
+
+  .hero-card-body p {
+    font-size: 0.84rem;
+    color: #94a3b8;
+    line-height: 1.6;
+  }
+
+  .hero-card-action {
+    flex-shrink: 0;
+  }
+
+  .btn-primary {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #6337ff 0%, #3b82f6 60%, #00c8ff 100%);
+    color: #fff;
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    border: none;
+    border-radius: 10px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: opacity 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 18px rgba(99,55,255,0.35);
+    white-space: nowrap;
+  }
+
+  .btn-primary:hover {
+    opacity: 0.9;
+    box-shadow: 0 6px 24px rgba(99,55,255,0.5);
+  }
+
+  /* ===== Nav grid ===== */
+  .nav-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .nav-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 1.4rem 1.5rem;
+    text-decoration: none;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    transition: background 0.2s, border-color 0.2s, transform 0.15s;
+  }
+
+  .nav-card:hover {
+    background: rgba(99,55,255,0.08);
+    border-color: rgba(99,55,255,0.3);
+    transform: translateY(-2px);
+  }
+
+  .nav-card-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: rgba(99,55,255,0.15);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .nav-card-icon svg {
+    width: 20px; height: 20px;
+    fill: none;
+    stroke: #818cf8;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .nav-card-icon.teal { background: rgba(0,200,255,0.12); }
+  .nav-card-icon.teal svg { stroke: #38bdf8; }
+
+  .nav-card-text .nav-card-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-bottom: 0.25rem;
+  }
+
+  .nav-card-text .nav-card-desc {
+    font-size: 0.76rem;
+    color: #64748b;
+    line-height: 1.5;
+  }
+
+  /* ===== Info strip ===== */
+  .info-strip {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .info-strip .info-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: rgba(99,55,255,0.12);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .info-strip .info-icon svg {
+    width: 18px; height: 18px;
+    fill: none;
+    stroke: #818cf8;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .info-strip .info-text {
+    font-size: 0.82rem;
+    color: #64748b;
+    line-height: 1.5;
+  }
+
+  .info-strip .info-text strong {
+    color: #94a3b8;
+    font-weight: 600;
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 640px) {
+    .top-header { padding: 0 1rem; }
+    .page-body { padding: 1.75rem 1rem 3rem; }
+    .hero-card { flex-direction: column; align-items: flex-start; padding: 1.5rem; }
+    .hero-card-action { width: 100%; }
+    .btn-primary { width: 100%; text-align: center; display: block; }
+    .welcome-title { font-size: 1.4rem; }
+  }
+</style>
+
+<!-- ===== Header ===== -->
+<header class="top-header">
+  <a href="{% url 'accounts:dashboard' %}" class="header-brand">
+    <span class="logo-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 5v14l11-7z"/>
+      </svg>
+    </span>
+    <span class="logo-text">VideoCreate AI</span>
+  </a>
+
+  <div class="header-right">
+    <div class="user-badge">
+      <span class="user-avatar">{{ user.email|first|upper }}</span>
+      <span>{{ user.email }}</span>
+    </div>
+    <form method="post" action="{% url 'accounts:logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn-logout">ログアウト</button>
+    </form>
+  </div>
+</header>
+
+<!-- ===== Main ===== -->
+<div class="page-body">
+
+  <!-- Welcome -->
+  <section class="welcome-section">
+    <p class="welcome-eyebrow">Dashboard</p>
+    <h1 class="welcome-title">おかえりなさい、<span>{{ user.email }}</span></h1>
+    <p class="welcome-sub">今日も AI の力で、新しい映像を生み出しましょう。</p>
+  </section>
+
+  <!-- Hero action -->
+  <div class="hero-card">
+    <div class="hero-card-body">
+      <span class="tag">AI Video Generator</span>
+      <h2>テキストから動画を自動生成</h2>
+      <p>プロンプトを入力するだけで、AIが映像・ナレーション・編集を自動で行います。<br>まずは使用するAIサービスを設定してください。</p>
+    </div>
+    <div class="hero-card-action">
+      <a href="{% url 'video_ai:provider_list' %}" class="btn-primary">AIサービスを設定する</a>
+    </div>
+  </div>
+
+  <!-- Nav cards -->
+  <p class="section-heading">メニュー</p>
+  <div class="nav-grid">
+    <a href="{% url 'video_ai:provider_list' %}" class="nav-card">
+      <span class="nav-card-icon">
+        <svg viewBox="0 0 24 24">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+        </svg>
+      </span>
+      <div class="nav-card-text">
+        <p class="nav-card-title">動画生成AIサービス</p>
+        <p class="nav-card-desc">利用するAIプロバイダーの登録・設定・管理</p>
+      </div>
+    </a>
+  </div>
+
+  <!-- Info strip -->
+  <div class="info-strip">
+    <span class="info-icon">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+      </svg>
+    </span>
+    <p class="info-text">
+      <strong>はじめに：</strong>
+      「動画生成AIサービス」から利用したいAIプロバイダーのAPIキーを登録すると、動画生成機能が利用できるようになります。
+    </p>
+  </div>
+
+</div>
 {% endblock %}

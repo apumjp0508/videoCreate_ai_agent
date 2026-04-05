@@ -1,13 +1,403 @@
 {% extends "accounts/base.html" %}
 
-{% block title %}Login{% endblock %}
+{% block title %}ログイン — VideoCreate AI{% endblock %}
 
 {% block content %}
-<h1>Login</h1>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Login</button>
-</form>
-<p>Don't have an account? <a href="{% url 'accounts:register' %}">Register</a></p>
+<style>
+  /* ===== Reset & Base ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: #0a0c14;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(99, 55, 255, 0.18) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 80%, rgba(0, 200, 255, 0.12) 0%, transparent 55%),
+      radial-gradient(ellipse 40% 40% at 50% 50%, rgba(255, 60, 120, 0.06) 0%, transparent 60%);
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+
+  /* ===== Outer wrapper ===== */
+  .login-wrapper {
+    width: 100%;
+    max-width: 960px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 32px 80px rgba(0,0,0,0.6);
+  }
+
+  /* ===== Left panel ===== */
+  .hero-panel {
+    background: linear-gradient(135deg, rgba(99,55,255,0.30) 0%, rgba(0,180,255,0.20) 60%, rgba(255,60,120,0.12) 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-right: 1px solid rgba(255,255,255,0.08);
+    padding: 3.5rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-panel::before {
+    content: '';
+    position: absolute;
+    top: -80px; left: -80px;
+    width: 320px; height: 320px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(99,55,255,0.25) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-panel::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; right: -60px;
+    width: 240px; height: 240px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,200,255,0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .brand-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .brand-logo .logo-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #6337ff, #00c8ff);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .brand-logo .logo-icon svg {
+    width: 20px; height: 20px; fill: #fff;
+  }
+
+  .brand-logo .logo-text {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    background: linear-gradient(90deg, #a78bfa, #38bdf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #38bdf8;
+    border: 1px solid rgba(56,189,248,0.35);
+    border-radius: 20px;
+    padding: 0.25rem 0.75rem;
+    margin-bottom: 1.25rem;
+    width: fit-content;
+  }
+
+  .hero-headline {
+    font-size: 1.9rem;
+    font-weight: 800;
+    line-height: 1.25;
+    margin-bottom: 1.1rem;
+    background: linear-gradient(135deg, #f1f5f9 30%, #a78bfa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: #94a3b8;
+    margin-bottom: 2rem;
+  }
+
+  .hero-features {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .hero-features li {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 0.83rem;
+    color: #cbd5e1;
+  }
+
+  .hero-features li .feat-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6337ff, #00c8ff);
+    flex-shrink: 0;
+  }
+
+  /* ===== Right panel (form) ===== */
+  .form-panel {
+    background: rgba(15, 18, 30, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 3.5rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .form-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 0.4rem;
+  }
+
+  .form-subtitle {
+    font-size: 0.83rem;
+    color: #64748b;
+    margin-bottom: 2rem;
+  }
+
+  /* ===== Non-field errors ===== */
+  .error-box {
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.82rem;
+    color: #fca5a5;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  /* ===== Form fields ===== */
+  .field-group {
+    margin-bottom: 1.1rem;
+  }
+
+  .field-group label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+    margin-bottom: 0.45rem;
+  }
+
+  .field-group input {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-size: 0.92rem;
+    color: #f1f5f9;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  }
+
+  .field-group input::placeholder { color: #475569; }
+
+  .field-group input:focus {
+    border-color: rgba(99, 55, 255, 0.6);
+    background: rgba(99, 55, 255, 0.06);
+    box-shadow: 0 0 0 3px rgba(99,55,255,0.15);
+  }
+
+  .field-group input.has-error {
+    border-color: rgba(248, 113, 113, 0.5);
+  }
+
+  .field-error {
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    color: #f87171;
+  }
+
+  /* ===== Submit button ===== */
+  .btn-login {
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.85rem 1rem;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #6337ff 0%, #3b82f6 60%, #00c8ff 100%);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: opacity 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 20px rgba(99,55,255,0.35);
+  }
+
+  .btn-login:hover {
+    opacity: 0.92;
+    box-shadow: 0 6px 28px rgba(99,55,255,0.5);
+  }
+
+  .btn-login:active { opacity: 0.85; }
+
+  /* ===== Register link ===== */
+  .register-link {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 0.82rem;
+    color: #64748b;
+  }
+
+  .register-link a {
+    color: #818cf8;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s;
+  }
+
+  .register-link a:hover { color: #a5b4fc; text-decoration: underline; }
+
+  /* ===== Divider ===== */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    margin: 1.5rem 0;
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 680px) {
+    .login-wrapper {
+      grid-template-columns: 1fr;
+      max-width: 420px;
+      border-radius: 16px;
+    }
+
+    .hero-panel {
+      padding: 2rem 1.75rem 1.75rem;
+      border-right: none;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .hero-headline { font-size: 1.5rem; }
+    .hero-sub { display: none; }
+    .hero-features { display: none; }
+
+    .form-panel { padding: 2rem 1.75rem 2.5rem; }
+  }
+</style>
+
+<div class="login-wrapper">
+
+  <!-- ===== Left: Hero panel ===== -->
+  <aside class="hero-panel" aria-hidden="true">
+    <div class="brand-logo">
+      <span class="logo-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+      </span>
+      <span class="logo-text">VideoCreate AI</span>
+    </div>
+
+    <span class="hero-tag">AI-Powered Platform</span>
+
+    <h1 class="hero-headline">アイデアを、<br>動画へ。</h1>
+
+    <p class="hero-sub">
+      テキストを入力するだけで、AIが映像・ナレーション・編集までを自動生成。<br>
+      クリエイターの創造力を、もっと遠くへ。
+    </p>
+
+    <ul class="hero-features">
+      <li><span class="feat-dot"></span>プロンプトから動画を自動生成</li>
+      <li><span class="feat-dot"></span>複数の生成AIエンジンを比較</li>
+      <li><span class="feat-dot"></span>生成履歴・プロジェクト管理</li>
+      <li><span class="feat-dot"></span>チームでリアルタイム共同編集</li>
+    </ul>
+  </aside>
+
+  <!-- ===== Right: Login form ===== -->
+  <main class="form-panel">
+    <h2 class="form-title">おかえりなさい</h2>
+    <p class="form-subtitle">アカウントにログインして、制作を再開しましょう。</p>
+
+    {% if form.non_field_errors %}
+    <div class="error-box" role="alert">
+      {% for error in form.non_field_errors %}
+        <span>{{ error }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <div class="field-group">
+        <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+        <input
+          type="text"
+          id="{{ form.username.id_for_label }}"
+          name="{{ form.username.html_name }}"
+          value="{{ form.username.value|default:'' }}"
+          placeholder="ユーザー名を入力"
+          autocomplete="username"
+          {% if form.username.errors %}class="has-error"{% endif %}
+          required
+        >
+        {% if form.username.errors %}
+          <div class="field-error" role="alert">
+            {% for error in form.username.errors %}{{ error }}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="field-group">
+        <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+        <input
+          type="password"
+          id="{{ form.password.id_for_label }}"
+          name="{{ form.password.html_name }}"
+          placeholder="パスワードを入力"
+          autocomplete="current-password"
+          {% if form.password.errors %}class="has-error"{% endif %}
+          required
+        >
+        {% if form.password.errors %}
+          <div class="field-error" role="alert">
+            {% for error in form.password.errors %}{{ error }}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn-login">ログイン</button>
+    </form>
+
+    <div class="divider"></div>
+
+    <p class="register-link">
+      アカウントをお持ちでないですか？&nbsp;
+      <a href="{% url 'accounts:register' %}">新規登録はこちら</a>
+    </p>
+  </main>
+
+</div>
 {% endblock %}
