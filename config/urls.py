@@ -22,4 +22,5 @@ urlpatterns = [
     path('', include('accounts.urls', namespace='accounts')),
     path('dashboard/video-ai/', include('video_ai.urls', namespace='video_ai')),
     path('admin-panel/', include('admin_panel.urls', namespace='admin_panel')),
+    path('', include('google_auth.urls', namespace='google_auth')),
 ]

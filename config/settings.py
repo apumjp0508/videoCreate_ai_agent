@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'accounts',
     'video_ai',
     'admin_panel',
+    'google_auth',
 ]
 
 MIDDLEWARE = [
@@ -125,3 +126,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Google Cloud / YouTube Data API
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:8000/auth/google/callback')
+# True の場合は実際の Google API を呼ばずモックで動作する
+GOOGLE_OAUTH_MOCK = os.environ.get('GOOGLE_OAUTH_MOCK', 'True') == 'True'
