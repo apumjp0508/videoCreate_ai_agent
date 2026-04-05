@@ -9,6 +9,9 @@ urlpatterns = [
     path('youtube/channels/', views.ChannelListView.as_view(), name='channel_list'),
     path('youtube/channels/<int:channel_id>/set-default/', views.ChannelSetDefaultView.as_view(), name='channel_set_default'),
 
+    # YouTube選択画面（動画作成フロー ステップ1）
+    path('youtube/select/', views.YoutubeSelectView.as_view(), name='youtube_select'),
+
     # OAuth フロー
     path('auth/google/start/', views.GoogleOAuthStartView.as_view(), name='oauth_start'),
     path('auth/google/callback/', views.GoogleOAuthCallbackView.as_view(), name='oauth_callback'),

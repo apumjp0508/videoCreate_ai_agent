@@ -142,8 +142,9 @@
   }
 
   .welcome-sub {
-    font-size: 0.87rem;
-    color: #64748b;
+    font-size: 0.9rem;
+    color: #94a3b8;
+    line-height: 1.65;
   }
 
   /* ===== Section heading ===== */
@@ -203,9 +204,9 @@
   }
 
   .hero-card-body p {
-    font-size: 0.84rem;
-    color: #94a3b8;
-    line-height: 1.6;
+    font-size: 0.88rem;
+    color: #cbd5e1;
+    line-height: 1.7;
   }
 
   .hero-card-action {
@@ -288,9 +289,9 @@
   }
 
   .nav-card-text .nav-card-desc {
-    font-size: 0.76rem;
-    color: #64748b;
-    line-height: 1.5;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    line-height: 1.55;
   }
 
   /* ===== Info strip ===== */
@@ -322,13 +323,13 @@
   }
 
   .info-strip .info-text {
-    font-size: 0.82rem;
-    color: #64748b;
-    line-height: 1.5;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    line-height: 1.65;
   }
 
   .info-strip .info-text strong {
-    color: #94a3b8;
+    color: #cbd5e1;
     font-weight: 600;
   }
 
@@ -384,14 +385,14 @@
       <p>プロンプトを入力するだけで、AIが映像・ナレーション・編集を自動で行います。<br>運営が提供するAIサービスをそのままご利用いただけます。</p>
     </div>
     <div class="hero-card-action">
-      <a href="#" class="btn-primary">動画を作成する</a>
+      <a href="{% url 'accounts:create_video' %}" class="btn-primary">動画を作成する</a>
     </div>
   </div>
 
   <!-- Nav cards -->
   <p class="section-heading">メニュー</p>
   <div class="nav-grid">
-    <a href="#" class="nav-card">
+    <a href="{% url 'accounts:create_video' %}" class="nav-card">
       <span class="nav-card-icon">
         <svg viewBox="0 0 24 24">
           <polygon points="5 3 19 12 5 21 5 3"/>

@@ -149,6 +149,28 @@ class GoogleOAuthCallbackView(LoginRequiredMixin, View):
         return redirect('google_auth:channel_list')
 
 
+class YoutubeSelectView(LoginRequiredMixin, View):
+    """
+    YouTube選択画面。
+
+    ログイン中ユーザーが持つYouTubeチャンネル一覧を表示し、
+    1つ選択したら content_select へ遷移する。
+    channel_id は YoutubeChannel の DB主キー（整数）を使う。
+    """
+    login_url = '/login/'
+
+    def get(self, request):
+        channels = (
+            YoutubeChannel.objects
+            .filter(user_google_account__user=request.user, is_active=True)
+            .select_related('user_google_account')
+            .order_by('-is_default', 'title')
+        )
+        return render(request, 'google_auth/youtube_select.html', {
+            'channels': channels,
+        })
+
+
 class ChannelSetDefaultView(LoginRequiredMixin, View):
     login_url = '/login/'
 
