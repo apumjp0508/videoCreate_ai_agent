@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ channel.name }} - データ一覧</title>
+</head>
+<body>
+    <h1>{{ channel.project.name }} / {{ channel.name }}</h1>
+    <a href="{% url 'channel_select:channel_list' %}">← チャンネル選択に戻る</a>
+
+    <hr>
+
+    <h2>画像データ ({{ images.count }}件)</h2>
+    {% if images %}
+        <table border="1" cellpadding="6">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>タイトル</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for image in images %}
+                    <tr>
+                        <td>{{ image.id }}</td>
+                        <td>{{ image.title|default:"-" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>画像データがありません。</p>
+    {% endif %}
+
+    <h2>音声データ ({{ audios.count }}件)</h2>
+    {% if audios %}
+        <table border="1" cellpadding="6">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>タイトル</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for audio in audios %}
+                    <tr>
+                        <td>{{ audio.id }}</td>
+                        <td>{{ audio.title|default:"-" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>音声データがありません。</p>
+    {% endif %}
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>チャンネル選択</title>
+</head>
+<body>
+    <h1>チャンネル選択</h1>
+
+    {% if channels %}
+        <ul>
+            {% for channel in channels %}
+                <li>
+                    <a href="{% url 'channel_select:channel_detail' channel.id %}">
+                        {{ channel.project.name }} / {{ channel.name }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>チャンネルがありません。</p>
+    {% endif %}
+</body>
+</html>

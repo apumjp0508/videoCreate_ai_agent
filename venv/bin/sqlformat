@@ -1,4 +1,4 @@
-#!/home/akihisa/ダウンロード/videoCreate_ai_agent/venv/bin/python3
+#!/home/utamu/AI_video/videoCreate_ai_agent/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys
