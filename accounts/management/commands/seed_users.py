@@ -7,11 +7,19 @@ MOCK_USERS = [
         "email": "alice@example.com",
         "password": "password123",
         "is_staff": False,
+        "is_superuser": False,
     },
     {
         "email": "bob@example.com",
         "password": "password123",
+        "is_staff": False,
+        "is_superuser": False,
+    },
+    {
+        "email": "admin@example.com",
+        "password": "password123",
         "is_staff": True,
+        "is_superuser": True,
     },
 ]
 
@@ -29,6 +37,7 @@ class Command(BaseCommand):
                 email=email,
                 password=data["password"],
                 is_staff=data.get("is_staff", False),
+                is_superuser=data.get("is_superuser", False),
             )
             self.stdout.write(self.style.SUCCESS(f"  created: {email}"))
 

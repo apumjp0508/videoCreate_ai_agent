@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>管理者ログイン | VideoCreate Admin</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f0f2f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .login-box { background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); padding: 40px; width: 100%; max-width: 400px; }
+    .login-box h1 { font-size: 1.3rem; font-weight: bold; text-align: center; margin-bottom: 4px; color: #1e2a3a; }
+    .login-box .subtitle { text-align: center; color: #888; font-size: 0.85rem; margin-bottom: 28px; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 6px; color: #374151; }
+    .form-group input { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem; }
+    .form-group input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .btn-submit { width: 100%; padding: 11px; background: #1e2a3a; color: #fff; border: none; border-radius: 6px; font-size: 0.95rem; font-weight: 600; cursor: pointer; margin-top: 8px; }
+    .btn-submit:hover { background: #2e3f54; }
+    .error-list { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; border-radius: 6px; padding: 10px 14px; margin-bottom: 20px; font-size: 0.87rem; list-style: none; }
+    .error-list li::before { content: "⚠ "; }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h1>VideoCreate</h1>
+    <p class="subtitle">管理者専用ログイン</p>
+
+    {% if form.non_field_errors %}
+      <ul class="error-list">
+        {% for error in form.non_field_errors %}
+          <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-group">
+        <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+        {{ form.email }}
+        {% if form.email.errors %}<div style="color:#dc2626;font-size:0.82rem;margin-top:4px;">{{ form.email.errors }}</div>{% endif %}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+        {{ form.password }}
+        {% if form.password.errors %}<div style="color:#dc2626;font-size:0.82rem;margin-top:4px;">{{ form.password.errors }}</div>{% endif %}
+      </div>
+      <button type="submit" class="btn-submit">ログイン</button>
+    </form>
+  </div>
+</body>
+</html>

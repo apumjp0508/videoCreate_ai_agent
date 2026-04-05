@@ -45,10 +45,15 @@ docker compose -f "$COMPOSE_FILE" exec web python manage.py migrate
 
 echo "🌱 モックデータを投入中..."
 docker compose -f "$COMPOSE_FILE" exec web python manage.py seed_users
+docker compose -f "$COMPOSE_FILE" exec web python manage.py seed_video_ai_providers
 
 echo "✅ 起動完了"
 echo "Backend:  http://localhost:8000"
 echo ""
 echo "👤 モックユーザー"
-echo "  alice@example.com / password123"
-echo "  bob@example.com   / password123"
+echo "  alice@example.com / password123  (一般ユーザー)"
+echo "  bob@example.com   / password123  (一般ユーザー)"
+echo "  admin@example.com / password123  (管理者)"
+echo ""
+echo "🔐 管理画面"
+echo "  http://localhost:8000/admin-panel/"

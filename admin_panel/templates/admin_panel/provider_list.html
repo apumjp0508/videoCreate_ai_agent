@@ -1,0 +1,71 @@
+{% extends "admin_panel/base.html" %}
+
+{% block title %}プロバイダー一覧{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>AIプロバイダー一覧</h1>
+  <p>動画生成AIサービスの管理</p>
+</div>
+
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <span style="font-size: 0.9rem; color: #666;">{{ providers|length }} 件</span>
+    <a href="{% url 'admin_panel:provider_create' %}" class="btn btn-primary btn-sm">+ プロバイダー追加</a>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>キー</th>
+        <th>サービス名</th>
+        <th>API URL</th>
+        <th>ドキュメント</th>
+        <th>状態</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for provider in providers %}
+      <tr>
+        <td>{{ provider.id }}</td>
+        <td><code>{{ provider.provider_key }}</code></td>
+        <td>{{ provider.provider_name }}</td>
+        <td style="font-size: 0.82rem;"><code>{{ provider.api_base_url }}</code></td>
+        <td style="font-size: 0.82rem;">
+          {% if provider.docs_url %}
+            <a href="{{ provider.docs_url }}" target="_blank" rel="noopener noreferrer">Docs</a>
+          {% else %}
+            <span style="color: #999;">-</span>
+          {% endif %}
+        </td>
+        <td>
+          <form method="post" action="{% url 'admin_panel:provider_toggle' provider_id=provider.id %}" style="display: inline;">
+            {% csrf_token %}
+            {% if provider.is_active %}
+              <button type="submit" class="btn btn-sm" style="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;">
+                有効 ▶ 無効にする
+              </button>
+            {% else %}
+              <button type="submit" class="btn btn-sm" style="background:#e5e7eb;color:#6b7280;border:1px solid #d1d5db;">
+                無効 ▶ 有効にする
+              </button>
+            {% endif %}
+          </form>
+        </td>
+        <td>
+          <a href="{% url 'admin_panel:provider_edit' provider_id=provider.id %}" class="btn btn-secondary btn-sm">編集</a>
+          <form method="post" action="{% url 'admin_panel:provider_delete' provider_id=provider.id %}" style="display: inline;" onsubmit="return confirm('{{ provider.provider_name }} を削除しますか？')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-sm">削除</button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" style="text-align: center; color: #999;">プロバイダーがいません</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

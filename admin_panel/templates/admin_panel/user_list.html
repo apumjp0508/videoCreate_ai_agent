@@ -1,0 +1,57 @@
+{% extends "admin_panel/base.html" %}
+
+{% block title %}ユーザー一覧{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>ユーザー一覧</h1>
+  <p>登録ユーザーの管理</p>
+</div>
+
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <span style="font-size: 0.9rem; color: #666;">{{ users|length }} 件</span>
+    <a href="{% url 'admin_panel:user_create' %}" class="btn btn-primary btn-sm">+ ユーザー追加</a>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>メールアドレス</th>
+        <th>スタッフ</th>
+        <th>スーパーユーザー</th>
+        <th>アクティブ</th>
+        <th>登録日時</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td>
+          {{ u.email }}
+          {% if u == user %}<span class="badge badge-blue">自分</span>{% endif %}
+        </td>
+        <td>{% if u.is_staff %}<span class="badge badge-green">YES</span>{% else %}<span class="badge badge-gray">-</span>{% endif %}</td>
+        <td>{% if u.is_superuser %}<span class="badge badge-green">YES</span>{% else %}<span class="badge badge-gray">-</span>{% endif %}</td>
+        <td>{% if u.is_active %}<span class="badge badge-green">有効</span>{% else %}<span class="badge badge-red">無効</span>{% endif %}</td>
+        <td style="font-size: 0.82rem; color: #666;">{{ u.created_at|date:"Y/m/d H:i" }}</td>
+        <td>
+          <a href="{% url 'admin_panel:user_edit' user_id=u.id %}" class="btn btn-secondary btn-sm">編集</a>
+          {% if u != user %}
+          <form method="post" action="{% url 'admin_panel:user_delete' user_id=u.id %}" style="display: inline;" onsubmit="return confirm('{{ u.email }} を削除しますか？')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-sm">削除</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" style="text-align: center; color: #999;">ユーザーがいません</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

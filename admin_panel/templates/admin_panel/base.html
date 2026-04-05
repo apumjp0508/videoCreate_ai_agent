@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}管理画面{% endblock %} | VideoCreate Admin</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f4f6f8; color: #333; display: flex; min-height: 100vh; }
+
+    /* サイドバー */
+    .sidebar {
+      width: 220px; min-height: 100vh; background: #1e2a3a; color: #cdd6e0;
+      display: flex; flex-direction: column; flex-shrink: 0;
+    }
+    .sidebar-header {
+      padding: 24px 20px 16px; font-size: 1.1rem; font-weight: bold;
+      color: #fff; border-bottom: 1px solid #2e3f54;
+    }
+    .sidebar-header span { font-size: 0.75rem; display: block; color: #7a99b8; margin-top: 4px; }
+    .sidebar nav { padding: 12px 0; flex: 1; }
+    .sidebar nav a {
+      display: block; padding: 10px 20px; color: #cdd6e0;
+      text-decoration: none; font-size: 0.9rem;
+    }
+    .sidebar nav a:hover, .sidebar nav a.active { background: #2e3f54; color: #fff; }
+    .sidebar-section { padding: 8px 20px 4px; font-size: 0.72rem; color: #5a7a9a; text-transform: uppercase; letter-spacing: 0.05em; }
+    .sidebar-footer { padding: 16px 20px; border-top: 1px solid #2e3f54; font-size: 0.8rem; color: #7a99b8; }
+
+    /* メインコンテンツ */
+    .main { flex: 1; padding: 32px; overflow-y: auto; }
+    .page-header { margin-bottom: 24px; }
+    .page-header h1 { font-size: 1.5rem; font-weight: bold; }
+    .page-header p { color: #666; font-size: 0.9rem; margin-top: 4px; }
+
+    /* カード */
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 24px; }
+
+    /* テーブル */
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e8ecf0; font-size: 0.9rem; }
+    th { background: #f8fafc; font-weight: 600; color: #555; }
+    tr:last-child td { border-bottom: none; }
+
+    /* ボタン */
+    .btn { display: inline-block; padding: 8px 16px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.88rem; text-decoration: none; }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: #e5e7eb; color: #374151; }
+    .btn-secondary:hover { background: #d1d5db; }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+
+    /* フォーム */
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem; }
+    .form-group input[type=text], .form-group input[type=email],
+    .form-group input[type=password], .form-group input[type=url],
+    .form-group textarea, .form-group select {
+      width: 100%; padding: 9px 12px; border: 1px solid #d1d5db;
+      border-radius: 5px; font-size: 0.9rem;
+    }
+    .form-group input[type=checkbox] { width: auto; margin-right: 8px; }
+    .form-group .checkbox-label { display: flex; align-items: center; font-weight: normal; }
+    .form-error { color: #dc2626; font-size: 0.82rem; margin-top: 4px; }
+    .form-actions { display: flex; gap: 12px; align-items: center; margin-top: 24px; }
+
+    /* アラート */
+    .alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 0.9rem; }
+    .alert-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+    .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+    /* バッジ */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+    .badge-green { background: #d1fae5; color: #065f46; }
+    .badge-gray { background: #e5e7eb; color: #6b7280; }
+    .badge-blue { background: #dbeafe; color: #1e40af; }
+    .badge-red { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-header">
+    VideoCreate
+    <span>管理画面</span>
+  </div>
+  <nav>
+    <a href="{% url 'admin_panel:dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>ダッシュボード</a>
+
+    <div class="sidebar-section">ユーザー管理</div>
+    <a href="{% url 'admin_panel:user_list' %}" {% if 'user' in request.resolver_match.url_name %}class="active"{% endif %}>ユーザー一覧</a>
+
+    <div class="sidebar-section">AIサービス管理</div>
+    <a href="{% url 'admin_panel:provider_list' %}" {% if 'provider' in request.resolver_match.url_name %}class="active"{% endif %}>プロバイダー一覧</a>
+  </nav>
+  <div class="sidebar-footer">
+    {{ user.email }}
+    <form method="post" action="{% url 'admin_panel:logout' %}" style="margin-top: 8px;">
+      {% csrf_token %}
+      <button type="submit" style="background: none; border: none; color: #7a99b8; cursor: pointer; padding: 0; font-size: 0.8rem;">ログアウト</button>
+    </form>
+  </div>
+</aside>
+
+<main class="main">
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {% block content %}{% endblock %}
+</main>
+
+</body>
+</html>

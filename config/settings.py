@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'accounts',
     'video_ai',
+    'admin_panel',
 ]
 
 MIDDLEWARE = [
