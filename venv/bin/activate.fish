@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV /home/utamu/AI_video/videoCreate_ai_agent/venv
+set -gx VIRTUAL_ENV '/home/akihisa/ダウンロード/videoCreate_ai_agent/venv'
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH
