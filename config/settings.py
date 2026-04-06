@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'video_ai',
     'admin_panel',
     'google_auth',
+    'temporal',
 ]
 
 MIDDLEWARE = [

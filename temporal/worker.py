@@ -18,9 +18,9 @@ from django.conf import settings  # noqa: E402
 from temporalio.worker import Worker  # noqa: E402
 
 from temporal.activities.dummy_activities import (  # noqa: E402
-    generate_video,
-    generate_video_script,
-    upload_to_youtube,
+    dummy_generate_video,
+    dummy_generate_video_script,
+    dummy_upload_to_youtube,
 )
 from temporal.client import get_temporal_client  # noqa: E402
 from temporal.workflows.video_job_workflow import VideoJobWorkflow  # noqa: E402
@@ -35,7 +35,7 @@ async def main() -> None:
         client,
         task_queue=settings.TEMPORAL_TASK_QUEUE,
         workflows=[VideoJobWorkflow],
-        activities=[generate_video_script, generate_video, upload_to_youtube],
+        activities=[dummy_generate_video_script, dummy_generate_video, dummy_upload_to_youtube],
     ):
         logger.info(
             "Worker started  task_queue=%s  namespace=%s  host=%s",
