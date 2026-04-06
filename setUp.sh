@@ -48,7 +48,16 @@ docker compose -f "$COMPOSE_FILE" exec web python manage.py seed_users
 docker compose -f "$COMPOSE_FILE" exec web python manage.py seed_video_ai_providers
 
 echo "✅ 起動完了"
-echo "Backend:  http://localhost:8000"
+echo ""
+echo "=== Django Web サーバー ==="
+echo "  Backend:   http://localhost:8000"
+echo ""
+echo "=== Temporal ==="
+echo "  UI:        http://localhost:8080   (ワークフロー実行状況の確認)"
+echo "  gRPC:      localhost:7233          (Worker / Client の接続先)"
+echo ""
+echo "  Worker ログを確認するには:"
+echo "    docker compose -f environment/dev/docker-compose.yml logs -f temporal-worker"
 echo ""
 echo "👤 モックユーザー"
 echo "  alice@example.com / password123  (一般ユーザー)"

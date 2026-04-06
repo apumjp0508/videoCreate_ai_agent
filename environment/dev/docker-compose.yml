@@ -1,4 +1,7 @@
 services:
+  # ─────────────────────────────────────────
+  # アプリ DB (Django 用)
+  # ─────────────────────────────────────────
   db:
     image: postgres:16
     volumes:
@@ -17,6 +20,9 @@ services:
       timeout: 5s
       retries: 10
 
+  # ─────────────────────────────────────────
+  # Django Web サーバー
+  # ─────────────────────────────────────────
   web:
     build:
       context: ../../
@@ -32,5 +38,80 @@ services:
       db:
         condition: service_healthy
 
+  # ─────────────────────────────────────────
+  # Temporal 専用 DB
+  # ─────────────────────────────────────────
+  temporal-db:
+    image: postgres:16
+    volumes:
+      - temporal_postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${TEMPORAL_DB_USER:-temporal}
+      POSTGRES_PASSWORD: ${TEMPORAL_DB_PASSWORD:-temporal}
+      POSTGRES_DB: temporal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TEMPORAL_DB_USER:-temporal}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─────────────────────────────────────────
+  # Temporal サーバー (auto-setup)
+  # ─────────────────────────────────────────
+  temporal:
+    image: temporalio/auto-setup:1.25.2
+    ports:
+      - "7233:7233"
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_SEEDS: temporal-db
+      POSTGRES_USER: ${TEMPORAL_DB_USER:-temporal}
+      POSTGRES_PWD: ${TEMPORAL_DB_PASSWORD:-temporal}
+    depends_on:
+      temporal-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "tctl", "--address", "temporal:7233", "cluster", "health"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ─────────────────────────────────────────
+  # Temporal UI
+  # ─────────────────────────────────────────
+  temporal-ui:
+    image: temporalio/ui:2.31.2
+    ports:
+      - "8080:8080"
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:8080
+    depends_on:
+      - temporal
+
+  # ─────────────────────────────────────────
+  # Temporal Worker (Django ベース)
+  # ─────────────────────────────────────────
+  temporal-worker:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    command: python -m temporal.worker
+    volumes:
+      - ../../:/app
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings
+      TEMPORAL_HOST: temporal:7233
+    depends_on:
+      db:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+
 volumes:
   postgres_data:
+  temporal_postgres_data:

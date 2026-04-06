@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'google_auth',
     'aivideo_component',
     'jobs',
+    'temporal',
 ]
 
 MIDDLEWARE = [
@@ -128,6 +129,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Temporal
+TEMPORAL_HOST = os.environ.get("TEMPORAL_HOST", "localhost:7233")
+TEMPORAL_NAMESPACE = os.environ.get("TEMPORAL_NAMESPACE", "default")
+TEMPORAL_TASK_QUEUE = os.environ.get("TEMPORAL_TASK_QUEUE", "video-job-queue")
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
