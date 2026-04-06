@@ -3,3 +3,5 @@ Django==6.0.3
 psycopg2-binary==2.9.11
 sqlparse==0.5.5
 cryptography==42.0.8
+Pillow>=10.0.0
+mutagen>=1.47.0
