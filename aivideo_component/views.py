@@ -10,6 +10,11 @@ from .forms import (
     AIProviderSelectForm, AI_PROVIDERS,
 )
 from .models import GeneratedAudio, GeneratedImage
+from .validation.protocol import AudioMeta, ContentValidationInput, ImageMeta
+from .validation.registry import UnknownProviderError, validate_content
+
+# セッションキー: ContentSelectView で保存した選択内容を AIProviderSelectView で参照する
+_CONTENT_SELECTION_SESSION_KEY = 'aivideo_content_selection'
 
 
 class ContentSelectView(View):
@@ -62,7 +67,12 @@ class ContentSelectView(View):
             audio_choices=ctx['audio_choices'],
         )
         if form.is_valid():
-            # TODO: 動画生成ジョブ作成処理をここに追加する
+            # 選択内容をセッションに保存して AI プロバイダー選択画面へ渡す
+            request.session[_CONTENT_SELECTION_SESSION_KEY] = {
+                'script':   form.cleaned_data['script'],
+                'image_id': form.cleaned_data.get('image') or None,
+                'audio_id': form.cleaned_data.get('audio') or None,
+            }
             return redirect('aivideo_component:provider_select', channel_id=channel_id)
         ctx['form'] = form
         return render(request, 'aivideo_component/content_select.html', ctx)
@@ -311,6 +321,53 @@ class AIProviderSelectView(View):
             for p in AI_PROVIDERS
         ]
 
+    def _build_validation_input(
+        self,
+        provider_key: str,
+        selection: dict,
+    ) -> ContentValidationInput:
+        """
+        セッションの選択内容と provider_key から ContentValidationInput を組み立てる。
+        モデルから必要なメタデータを取得してバリデーター用の型に変換する。
+        """
+        image_meta = None
+        if selection.get('image_id'):
+            try:
+                img = GeneratedImage.objects.get(pk=selection['image_id'])
+                image_meta = ImageMeta(
+                    image_id=img.pk,
+                    mime_type=img.mime_type,
+                    file_size_bytes=img.file_size_bytes,
+                    width=img.width,
+                    height=img.height,
+                    aspect_ratio=img.aspect_ratio,
+                )
+            except GeneratedImage.DoesNotExist:
+                pass
+
+        audio_meta = None
+        if selection.get('audio_id'):
+            try:
+                aud = GeneratedAudio.objects.get(pk=selection['audio_id'])
+                audio_meta = AudioMeta(
+                    audio_id=aud.pk,
+                    mime_type=aud.mime_type,
+                    file_size_bytes=aud.file_size_bytes,
+                    duration_sec=aud.duration_sec,
+                    sample_rate=aud.sample_rate,
+                    channels=aud.channels,
+                    codec=aud.codec,
+                )
+            except GeneratedAudio.DoesNotExist:
+                pass
+
+        return ContentValidationInput(
+            provider_key=provider_key,
+            script=selection.get('script', ''),
+            image=image_meta,
+            audio=audio_meta,
+        )
+
     def get(self, request, channel_id: int):
         if not request.user.is_authenticated:
             return redirect('accounts:login')
@@ -324,12 +381,40 @@ class AIProviderSelectView(View):
         if not request.user.is_authenticated:
             return redirect('accounts:login')
         form = AIProviderSelectForm(request.POST)
-        if form.is_valid():
-            # TODO: 選択した provider で動画生成ジョブを作成する
-            messages.success(request, f'生成AI「{form.cleaned_data["provider"]}」を選択しました。')
-            return redirect('accounts:dashboard')
-        return render(request, 'aivideo_component/provider_select.html', {
-            'form': form,
-            'providers': self._build_providers(),
-            'channel_id': channel_id,
-        })
+        if not form.is_valid():
+            return render(request, 'aivideo_component/provider_select.html', {
+                'form': form,
+                'providers': self._build_providers(),
+                'channel_id': channel_id,
+            })
+
+        provider_key = form.cleaned_data['provider']
+
+        # ── コンテンツバリデーション ──────────────────────────────
+        selection = request.session.get(_CONTENT_SELECTION_SESSION_KEY, {})
+        try:
+            validation_input = self._build_validation_input(provider_key, selection)
+            result = validate_content(validation_input)
+        except UnknownProviderError:
+            messages.error(request, '選択された AI プロバイダーは現在サポートされていません。')
+            return render(request, 'aivideo_component/provider_select.html', {
+                'form': form,
+                'providers': self._build_providers(),
+                'channel_id': channel_id,
+            })
+
+        if not result.is_valid:
+            for issue in result.errors:
+                messages.error(request, f'[{issue.field}] {issue.message}')
+            return render(request, 'aivideo_component/provider_select.html', {
+                'form': form,
+                'providers': self._build_providers(),
+                'channel_id': channel_id,
+            })
+
+        for issue in result.warnings:
+            messages.warning(request, f'[{issue.field}] {issue.message}')
+
+        # ── バリデーション通過 → TODO: 動画生成ジョブを作成する ──
+        messages.success(request, f'生成AI「{provider_key}」を選択しました。')
+        return redirect('accounts:dashboard')
