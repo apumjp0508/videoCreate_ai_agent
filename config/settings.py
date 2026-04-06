@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'admin_panel',
     'google_auth',
     'aivideo_component',
+    'jobs',
 ]
 
 MIDDLEWARE = [
