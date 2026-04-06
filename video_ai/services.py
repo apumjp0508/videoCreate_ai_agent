@@ -9,8 +9,8 @@ from temporalio.client import WorkflowFailureError
 
 from temporal.client import get_temporal_client
 from temporal.models import WorkflowAdminPermission
-from temporal.types import VideoJobInput, VideoJobOutput
-from temporal.workflows.video_job_workflow import VideoJobWorkflow
+from temporal.pipeline_types import PipelineInput, PipelineOutput
+from temporal.workflows.pipeline.video_pipeline_workflow import VideoPipelineWorkflow
 
 
 def has_workflow_permission(user) -> bool:
@@ -25,23 +25,23 @@ def _new_job_id() -> str:
     return str(uuid.uuid4())
 
 
-async def _start_video_job_async(input: VideoJobInput) -> VideoJobOutput:
+async def _start_pipeline_async(input: PipelineInput) -> PipelineOutput:
     client = await get_temporal_client()
-    result: VideoJobOutput = await client.execute_workflow(
-        VideoJobWorkflow.run,
+    result: PipelineOutput = await client.execute_workflow(
+        VideoPipelineWorkflow.run,
         input,
-        id=f"video-job-{input.job_id}",
+        id=input.job_id,
         task_queue="video-job-queue",
     )
     return result
 
 
-def start_video_job(input: VideoJobInput) -> VideoJobOutput:
+def start_video_pipeline(input: PipelineInput) -> PipelineOutput:
     """
-    Workflow を起動して完了まで待機する同期ラッパー。
+    VideoPipelineWorkflow を起動して完了まで待機する同期ラッパー。
     Django の同期 view から直接呼べる。
     """
     try:
-        return asyncio.run(_start_video_job_async(input))
+        return asyncio.run(_start_pipeline_async(input))
     except WorkflowFailureError as exc:
         raise RuntimeError(f"Workflow failed: {exc}") from exc
