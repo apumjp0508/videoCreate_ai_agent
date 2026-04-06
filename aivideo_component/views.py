@@ -26,8 +26,8 @@ class ContentSelectView(View):
 
     def _build_context(self, request, channel_id):
         channel = self._get_channel(request, channel_id)
-        images = GeneratedImage.objects.filter(channel=channel)
-        audios = GeneratedAudio.objects.filter(channel=channel)
+        images = GeneratedImage.objects.filter(youtube_channel=channel)
+        audios = GeneratedAudio.objects.filter(youtube_channel=channel)
         image_choices = [(img.pk, img.title) for img in images]
         audio_choices = [(aud.pk, aud.title) for aud in audios]
         return {
@@ -91,9 +91,9 @@ class ImageUploadView(View):
         form = ImageUploadForm(request.POST, request.FILES)
         if form.is_valid():
             GeneratedImage.objects.create(
-                channel=channel,
+                youtube_channel=channel,
                 title=form.cleaned_data['title'],
-                file=form.cleaned_data['file'],
+                image_file=form.cleaned_data['file'],
             )
             messages.success(request, '画像を保存しました。')
             return redirect('aivideo_component:content_select', channel_id=channel_id)
@@ -111,8 +111,8 @@ class ImageEditView(View):
         return get_object_or_404(
             GeneratedImage,
             pk=pk,
-            channel__id=channel_id,
-            channel__user_google_account__user=request.user,
+            youtube_channel__id=channel_id,
+            youtube_channel__user_google_account__user=request.user,
         )
 
     def get(self, request, channel_id: int, pk: int):
@@ -135,8 +135,8 @@ class ImageEditView(View):
             image.title = form.cleaned_data['title']
             if form.cleaned_data.get('file'):
                 # 古いファイルをストレージから削除してから差し替え
-                image.file.delete(save=False)
-                image.file = form.cleaned_data['file']
+                image.image_file.delete(save=False)
+                image.image_file = form.cleaned_data['file']
             image.save()
             messages.success(request, '画像を更新しました。')
             return redirect('aivideo_component:content_select', channel_id=channel_id)
@@ -155,8 +155,8 @@ class ImageDeleteView(View):
         return get_object_or_404(
             GeneratedImage,
             pk=pk,
-            channel__id=channel_id,
-            channel__user_google_account__user=request.user,
+            youtube_channel__id=channel_id,
+            youtube_channel__user_google_account__user=request.user,
         )
 
     def get(self, request, channel_id: int, pk: int):
@@ -172,7 +172,7 @@ class ImageDeleteView(View):
         if not request.user.is_authenticated:
             return redirect('accounts:login')
         image = self._get_image(request, channel_id, pk)
-        image.file.delete(save=False)
+        image.image_file.delete(save=False)
         image.delete()
         messages.success(request, '画像を削除しました。')
         return redirect('aivideo_component:content_select', channel_id=channel_id)
@@ -202,9 +202,9 @@ class AudioUploadView(View):
         form = AudioUploadForm(request.POST, request.FILES)
         if form.is_valid():
             GeneratedAudio.objects.create(
-                channel=channel,
+                youtube_channel=channel,
                 title=form.cleaned_data['title'],
-                file=form.cleaned_data['file'],
+                audio_file=form.cleaned_data['file'],
             )
             messages.success(request, '音声を保存しました。')
             return redirect('aivideo_component:content_select', channel_id=channel_id)
@@ -222,8 +222,8 @@ class AudioEditView(View):
         return get_object_or_404(
             GeneratedAudio,
             pk=pk,
-            channel__id=channel_id,
-            channel__user_google_account__user=request.user,
+            youtube_channel__id=channel_id,
+            youtube_channel__user_google_account__user=request.user,
         )
 
     def get(self, request, channel_id: int, pk: int):
@@ -245,8 +245,8 @@ class AudioEditView(View):
         if form.is_valid():
             audio.title = form.cleaned_data['title']
             if form.cleaned_data.get('file'):
-                audio.file.delete(save=False)
-                audio.file = form.cleaned_data['file']
+                audio.audio_file.delete(save=False)
+                audio.audio_file = form.cleaned_data['file']
             audio.save()
             messages.success(request, '音声を更新しました。')
             return redirect('aivideo_component:content_select', channel_id=channel_id)
@@ -265,8 +265,8 @@ class AudioDeleteView(View):
         return get_object_or_404(
             GeneratedAudio,
             pk=pk,
-            channel__id=channel_id,
-            channel__user_google_account__user=request.user,
+            youtube_channel__id=channel_id,
+            youtube_channel__user_google_account__user=request.user,
         )
 
     def get(self, request, channel_id: int, pk: int):
@@ -282,7 +282,7 @@ class AudioDeleteView(View):
         if not request.user.is_authenticated:
             return redirect('accounts:login')
         audio = self._get_audio(request, channel_id, pk)
-        audio.file.delete(save=False)
+        audio.audio_file.delete(save=False)
         audio.delete()
         messages.success(request, '音声を削除しました。')
         return redirect('aivideo_component:content_select', channel_id=channel_id)
