@@ -3,6 +3,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 
 from google_auth.models import YoutubeChannel
+from jobs.services import VideoAiConfigNotFoundError, WorkflowStartError, create_video_job, start_workflow_for_job
 from .forms import (
     AudioEditForm, AudioUploadForm,
     ContentSelectForm,
@@ -415,6 +416,36 @@ class AIProviderSelectView(View):
         for issue in result.warnings:
             messages.warning(request, f'[{issue.field}] {issue.message}')
 
-        # ── バリデーション通過 → TODO: 動画生成ジョブを作成する ──
-        messages.success(request, f'生成AI「{provider_key}」を選択しました。')
+        # ── バリデーション通過 → Job 作成 ────────────────────────
+        try:
+            job = create_video_job(
+                user=request.user,
+                channel_id=channel_id,
+                provider_key=provider_key,
+                script=selection.get('script', ''),
+                image_id=int(selection['image_id']) if selection.get('image_id') else None,
+                audio_id=int(selection['audio_id']) if selection.get('audio_id') else None,
+            )
+        except VideoAiConfigNotFoundError as exc:
+            messages.error(request, str(exc))
+            return render(request, 'aivideo_component/provider_select.html', {
+                'form': form,
+                'providers': self._build_providers(),
+                'channel_id': channel_id,
+            })
+
+        # ── Temporal Workflow 起動 ────────────────────────────────
+        try:
+            start_workflow_for_job(job)
+        except WorkflowStartError as exc:
+            messages.error(request, f'動画生成の開始に失敗しました。しばらく経ってから再試行してください。（{exc}）')
+            return render(request, 'aivideo_component/provider_select.html', {
+                'form': form,
+                'providers': self._build_providers(),
+                'channel_id': channel_id,
+            })
+
+        # ── 成功 → セッションをクリアして完了 ────────────────────
+        request.session.pop(_CONTENT_SELECTION_SESSION_KEY, None)
+        messages.success(request, f'動画生成ジョブを作成しました（Job #{job.id}）')
         return redirect('accounts:dashboard')
