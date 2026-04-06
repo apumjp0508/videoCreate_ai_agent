@@ -18,14 +18,8 @@ urlpatterns = [
     #    あり → YouTube選択画面 (google_auth:youtube_select)
     #    なし → YouTube連携画面 (google_auth:channel_list)
     #
-    # 2. /content/select/<channel_id>/
-    #    YouTube選択画面でチャンネルを選んだ後に遷移する画面。
-    #    channel_id は YoutubeChannel の DB主キー（整数）。
+    # 2. コンテンツ選択・アップロード画面は aivideo_component app が担当。
+    #    → aivideo_component:content_select / image_upload / audio_upload
     # -----------------------------------------------------------------------
     path('create/', views.CreateVideoView.as_view(), name='create_video'),
-    path('content/select/<int:channel_id>/', views.ContentSelectView.as_view(), name='content_select'),
-
-    # アップロード画面（content_select から遷移してくる）
-    path('content/select/<int:channel_id>/image/upload/', views.ImageUploadView.as_view(), name='image_upload'),
-    path('content/select/<int:channel_id>/audio/upload/', views.AudioUploadView.as_view(), name='audio_upload'),
 ]

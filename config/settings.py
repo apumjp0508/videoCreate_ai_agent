@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'video_ai',
     'admin_panel',
     'google_auth',
+    'aivideo_component',
 ]
 
 MIDDLEWARE = [
@@ -126,6 +127,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Google Cloud / YouTube Data API
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')

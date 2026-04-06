@@ -87,3 +87,5 @@ class YoutubeChannel(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.youtube_channel_id})"
+
+

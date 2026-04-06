@@ -1,0 +1,409 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}コンテンツ選択 — VideoCreate AI{% endblock %}
+
+{% block content %}
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: #0a0c14;
+    background-image:
+      radial-gradient(ellipse 70% 50% at 15% 5%,  rgba(99, 55, 255, 0.15) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 85% 90%, rgba(0, 200, 255, 0.10) 0%, transparent 50%);
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    color: #e2e8f0;
+  }
+
+  /* ===== Header ===== */
+  .top-header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10, 12, 20, 0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    padding: 0 2rem; height: 60px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header-brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
+  .header-brand .logo-icon {
+    width: 30px; height: 30px; border-radius: 7px;
+    background: linear-gradient(135deg, #6337ff, #00c8ff);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .header-brand .logo-icon svg { width: 16px; height: 16px; fill: #fff; }
+  .header-brand .logo-text {
+    font-size: 0.95rem; font-weight: 700;
+    background: linear-gradient(90deg, #a78bfa, #38bdf8);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .header-right { display: flex; align-items: center; gap: 1rem; }
+  .user-badge { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: #94a3b8; }
+  .user-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, #6337ff, #00c8ff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem; font-weight: 700; color: #fff;
+  }
+  .btn-logout {
+    padding: 0.4rem 0.9rem; font-size: 0.78rem; font-weight: 600;
+    color: #94a3b8; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+    cursor: pointer; transition: background 0.2s, color 0.2s;
+  }
+  .btn-logout:hover { background: rgba(255,255,255,0.09); color: #e2e8f0; }
+
+  /* ===== Page body ===== */
+  .page-body { max-width: 760px; margin: 0 auto; padding: 2.5rem 2rem 4rem; }
+
+  /* ===== Breadcrumb ===== */
+  .breadcrumb {
+    font-size: 0.78rem; color: #64748b; margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: 0.4rem;
+  }
+  .breadcrumb a { color: #818cf8; text-decoration: none; }
+  .breadcrumb a:hover { text-decoration: underline; color: #a5b4fc; }
+  .breadcrumb .sep { color: #475569; }
+
+  /* ===== Page heading ===== */
+  .page-eyebrow {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: #6337ff; margin-bottom: 0.5rem;
+  }
+  .page-title { font-size: 1.5rem; font-weight: 800; color: #f1f5f9; margin-bottom: 0.4rem; }
+  .page-sub { font-size: 0.9rem; color: #94a3b8; margin-bottom: 2rem; line-height: 1.65; }
+
+  /* ===== Channel badge ===== */
+  .channel-badge {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: rgba(99,55,255,0.12); border: 1px solid rgba(99,55,255,0.3);
+    border-radius: 10px; padding: 0.45rem 1rem;
+    font-size: 0.82rem; font-weight: 600; color: #a78bfa; margin-bottom: 2rem;
+  }
+  .channel-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #6337ff; }
+
+  /* ===== Section ===== */
+  .section { margin-bottom: 2.5rem; }
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  .section-title {
+    font-size: 0.95rem; font-weight: 700; color: #cbd5e1;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .section-title .badge-count {
+    font-size: 0.72rem; font-weight: 700;
+    background: rgba(99,55,255,0.25); color: #a78bfa;
+    border-radius: 999px; padding: 0.1rem 0.5rem;
+  }
+
+  /* ===== Item list ===== */
+  .item-list { display: flex; flex-direction: column; gap: 0.6rem; }
+  .item-row {
+    display: flex; align-items: center; gap: 0.75rem;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px; padding: 0.75rem 1rem;
+    transition: border-color 0.2s;
+  }
+  .item-row:hover { border-color: rgba(255,255,255,0.13); }
+  .item-icon {
+    width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+  }
+  .item-icon.img-icon { background: rgba(99,55,255,0.15); }
+  .item-icon.aud-icon { background: rgba(0,200,255,0.12); }
+  .item-info { flex: 1; min-width: 0; }
+  .item-title {
+    font-size: 0.88rem; font-weight: 600; color: #e2e8f0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .item-meta { font-size: 0.72rem; color: #64748b; margin-top: 0.15rem; }
+  .item-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+  .btn-edit {
+    font-size: 0.75rem; font-weight: 600; padding: 0.3rem 0.7rem;
+    color: #38bdf8; background: rgba(56,189,248,0.08);
+    border: 1px solid rgba(56,189,248,0.25); border-radius: 7px;
+    text-decoration: none; transition: background 0.2s, border-color 0.2s;
+  }
+  .btn-edit:hover { background: rgba(56,189,248,0.15); border-color: rgba(56,189,248,0.45); }
+  .btn-delete {
+    font-size: 0.75rem; font-weight: 600; padding: 0.3rem 0.7rem;
+    color: #f87171; background: rgba(248,113,113,0.08);
+    border: 1px solid rgba(248,113,113,0.25); border-radius: 7px;
+    text-decoration: none; transition: background 0.2s, border-color 0.2s;
+  }
+  .btn-delete:hover { background: rgba(248,113,113,0.15); border-color: rgba(248,113,113,0.45); }
+
+  /* ===== Empty state ===== */
+  .empty-state {
+    background: rgba(255,255,255,0.02);
+    border: 1px dashed rgba(255,255,255,0.09);
+    border-radius: 10px; padding: 1.2rem 1.5rem;
+    font-size: 0.84rem; color: #475569; text-align: center;
+  }
+
+  /* ===== Add button ===== */
+  .btn-add {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.78rem; font-weight: 600; color: #a78bfa;
+    background: rgba(99,55,255,0.1); border: 1px solid rgba(99,55,255,0.3);
+    border-radius: 8px; padding: 0.35rem 0.85rem;
+    text-decoration: none; transition: background 0.2s, border-color 0.2s;
+  }
+  .btn-add:hover { background: rgba(99,55,255,0.18); border-color: rgba(99,55,255,0.5); }
+
+  /* ===== Divider ===== */
+  .page-divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 2rem 0; }
+
+  /* ===== Form card ===== */
+  .form-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px; padding: 2rem;
+  }
+  .form-section-title {
+    font-size: 0.88rem; font-weight: 700; color: #94a3b8;
+    margin-bottom: 1.25rem; letter-spacing: 0.05em; text-transform: uppercase;
+  }
+
+  /* ===== Field group ===== */
+  .field-group { margin-bottom: 1.75rem; }
+  .field-group:last-of-type { margin-bottom: 0; }
+  .field-label {
+    display: block; font-size: 0.83rem; font-weight: 600; color: #cbd5e1;
+    margin-bottom: 0.5rem; letter-spacing: 0.02em;
+  }
+  .field-hint { font-size: 0.78rem; color: #64748b; margin-top: 0.4rem; line-height: 1.6; }
+  .field-group textarea {
+    width: 100%; padding: 0.75rem 1rem;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px; color: #e2e8f0; font-size: 0.88rem; line-height: 1.6;
+    font-family: inherit; resize: vertical; transition: border-color 0.2s; outline: none;
+  }
+  .field-group textarea:focus { border-color: rgba(99,55,255,0.5); background: rgba(99,55,255,0.05); }
+  .field-group select {
+    width: 100%; padding: 0.7rem 1rem;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px; color: #e2e8f0; font-size: 0.88rem; font-family: inherit;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 1rem center;
+    cursor: pointer; outline: none; transition: border-color 0.2s;
+  }
+  .field-group select:focus { border-color: rgba(99,55,255,0.5); background-color: rgba(99,55,255,0.05); }
+  .field-errors { margin-top: 0.4rem; font-size: 0.75rem; color: #f87171; }
+  .form-divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 1.75rem 0; }
+
+  /* ===== Buttons ===== */
+  .form-actions {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; margin-top: 2rem; flex-wrap: wrap;
+  }
+  .btn-primary {
+    display: inline-block; padding: 0.75rem 2rem;
+    background: linear-gradient(135deg, #6337ff 0%, #3b82f6 60%, #00c8ff 100%);
+    color: #fff; font-size: 0.88rem; font-weight: 700;
+    border: none; border-radius: 10px; cursor: pointer;
+    transition: opacity 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 18px rgba(99,55,255,0.35);
+    text-decoration: none; letter-spacing: 0.04em;
+  }
+  .btn-primary:hover { opacity: 0.9; box-shadow: 0 6px 24px rgba(99,55,255,0.5); }
+  .btn-back {
+    font-size: 0.84rem; color: #64748b; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 0.35rem; transition: color 0.2s;
+  }
+  .btn-back:hover { color: #94a3b8; }
+
+  @media (max-width: 640px) {
+    .top-header { padding: 0 1rem; }
+    .page-body { padding: 1.5rem 1rem 3rem; }
+    .form-card { padding: 1.5rem; }
+    .form-actions { flex-direction: column-reverse; align-items: stretch; }
+    .btn-primary { text-align: center; }
+    .section-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+    .item-actions { gap: 0.3rem; }
+  }
+</style>
+
+<!-- ===== Header ===== -->
+<header class="top-header">
+  <a href="{% url 'accounts:dashboard' %}" class="header-brand">
+    <span class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    </span>
+    <span class="logo-text">VideoCreate AI</span>
+  </a>
+  <div class="header-right">
+    <div class="user-badge">
+      <span class="user-avatar">{{ user.email|first|upper }}</span>
+      <span>{{ user.email }}</span>
+    </div>
+    <form method="post" action="{% url 'accounts:logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn-logout">ログアウト</button>
+    </form>
+  </div>
+</header>
+
+<!-- ===== Main ===== -->
+<div class="page-body">
+
+  <!-- パンくず -->
+  <nav class="breadcrumb">
+    <a href="{% url 'accounts:dashboard' %}">ダッシュボード</a>
+    <span class="sep">›</span>
+    <a href="{% url 'google_auth:youtube_select' %}">チャンネル選択</a>
+    <span class="sep">›</span>
+    <span>コンテンツ選択</span>
+  </nav>
+
+  <!-- ページタイトル -->
+  <p class="page-eyebrow">Step 2 / 2</p>
+  <h1 class="page-title">コンテンツを選択してください</h1>
+  <p class="page-sub">スクリプト・画像・音声を設定して動画を作成します。</p>
+
+  <!-- 選択中チャンネル -->
+  <div class="channel-badge">
+    <span class="dot"></span>
+    チャンネル：{{ channel.title }}（YouTube ID: {{ channel.youtube_channel_id }}）
+  </div>
+
+  <!-- ===== 画像管理セクション ===== -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">
+        🖼 画像
+        <span class="badge-count">{{ images|length }}</span>
+      </h2>
+      <a href="{% url 'aivideo_component:image_upload' channel_id=channel_id %}" class="btn-add">
+        ＋ 画像を追加
+      </a>
+    </div>
+
+    {% if images %}
+      <div class="item-list">
+        {% for img in images %}
+          <div class="item-row">
+            <div class="item-icon img-icon">🖼</div>
+            <div class="item-info">
+              <div class="item-title">{{ img.title }}</div>
+              <div class="item-meta">{{ img.file.name }} · {{ img.created_at|date:"Y/m/d H:i" }}</div>
+            </div>
+            <div class="item-actions">
+              <a href="{% url 'aivideo_component:image_edit' channel_id=channel_id pk=img.pk %}" class="btn-edit">編集</a>
+              <a href="{% url 'aivideo_component:image_delete' channel_id=channel_id pk=img.pk %}" class="btn-delete">削除</a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        画像がまだ登録されていません。「＋ 画像を追加」から追加してください。
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- ===== 音声管理セクション ===== -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">
+        🎵 音声 / BGM
+        <span class="badge-count">{{ audios|length }}</span>
+      </h2>
+      <a href="{% url 'aivideo_component:audio_upload' channel_id=channel_id %}" class="btn-add">
+        ＋ 音声を追加
+      </a>
+    </div>
+
+    {% if audios %}
+      <div class="item-list">
+        {% for aud in audios %}
+          <div class="item-row">
+            <div class="item-icon aud-icon">🎵</div>
+            <div class="item-info">
+              <div class="item-title">{{ aud.title }}</div>
+              <div class="item-meta">{{ aud.file.name }} · {{ aud.created_at|date:"Y/m/d H:i" }}</div>
+            </div>
+            <div class="item-actions">
+              <a href="{% url 'aivideo_component:audio_edit' channel_id=channel_id pk=aud.pk %}" class="btn-edit">編集</a>
+              <a href="{% url 'aivideo_component:audio_delete' channel_id=channel_id pk=aud.pk %}" class="btn-delete">削除</a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        音声がまだ登録されていません。「＋ 音声を追加」から追加してください。
+      </div>
+    {% endif %}
+  </div>
+
+  <hr class="page-divider">
+
+  <!-- ===== 動画作成フォーム ===== -->
+  <div class="form-card">
+    <p class="form-section-title">動画作成設定</p>
+    <form method="post">
+      {% csrf_token %}
+
+      <!-- スクリプト -->
+      <div class="field-group">
+        <label class="field-label" for="{{ form.script.id_for_label }}">スクリプト</label>
+        {{ form.script }}
+        <p class="field-hint">動画のナレーションや説明文を入力してください。</p>
+        {% if form.script.errors %}
+          <div class="field-errors">{{ form.script.errors }}</div>
+        {% endif %}
+      </div>
+
+      <hr class="form-divider">
+
+      <!-- 画像選択 -->
+      <div class="field-group">
+        <label class="field-label" for="{{ form.image.id_for_label }}">使用する画像</label>
+        {% if has_images %}
+          {{ form.image }}
+          <p class="field-hint">このチャンネルで使用できる背景画像を選択してください。</p>
+        {% else %}
+          <p class="field-hint" style="color:#f87171;">
+            このチャンネルに登録された画像がありません。上の「＋ 画像を追加」から追加してください。
+          </p>
+        {% endif %}
+        {% if form.image.errors %}
+          <div class="field-errors">{{ form.image.errors }}</div>
+        {% endif %}
+      </div>
+
+      <hr class="form-divider">
+
+      <!-- 音声選択 -->
+      <div class="field-group">
+        <label class="field-label" for="{{ form.audio.id_for_label }}">使用する音声 / BGM</label>
+        {% if has_audios %}
+          {{ form.audio }}
+          <p class="field-hint">このチャンネルで使用できる音声を選択してください。</p>
+        {% else %}
+          <p class="field-hint" style="color:#f87171;">
+            このチャンネルに登録された音声がありません。上の「＋ 音声を追加」から追加してください。
+          </p>
+        {% endif %}
+        {% if form.audio.errors %}
+          <div class="field-errors">{{ form.audio.errors }}</div>
+        {% endif %}
+      </div>
+
+      <!-- ボタン -->
+      <div class="form-actions">
+        <a href="{% url 'google_auth:youtube_select' %}" class="btn-back">← チャンネル選択に戻る</a>
+        <button type="submit" class="btn-primary">動画を作成する →</button>
+      </div>
+
+    </form>
+  </div>
+
+</div>
+{% endblock %}

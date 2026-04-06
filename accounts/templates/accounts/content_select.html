@@ -301,12 +301,14 @@
         <label class="field-label" for="{{ form.image.id_for_label }}">
           画像
         </label>
-        {{ form.image }}
-        <p class="field-hint">
-          このチャンネルで使用できる背景画像を選択してください。<br>
-          {# TODO: DB完成後はチャンネルに紐づく画像一覧をDBから取得する #}
-          {# 現在は仮データを表示しています #}
-        </p>
+        {% if has_images %}
+          {{ form.image }}
+          <p class="field-hint">このチャンネルで使用できる背景画像を選択してください。</p>
+        {% else %}
+          <p class="field-hint" style="color:#f87171;">
+            このチャンネルに登録された画像がありません。先に画像を追加してください。
+          </p>
+        {% endif %}
         <a href="{% url 'accounts:image_upload' channel_id=channel_id %}" class="btn-add-link">
           ＋ 画像を追加する
         </a>
@@ -322,12 +324,14 @@
         <label class="field-label" for="{{ form.audio.id_for_label }}">
           音声 / BGM
         </label>
-        {{ form.audio }}
-        <p class="field-hint">
-          このチャンネルで使用できる音声を選択してください。<br>
-          {# TODO: DB完成後はチャンネルに紐づく音声一覧をDBから取得する #}
-          {# 現在は仮データを表示しています #}
-        </p>
+        {% if has_audios %}
+          {{ form.audio }}
+          <p class="field-hint">このチャンネルで使用できる音声を選択してください。</p>
+        {% else %}
+          <p class="field-hint" style="color:#f87171;">
+            このチャンネルに登録された音声がありません。先に音声を追加してください。
+          </p>
+        {% endif %}
         <a href="{% url 'accounts:audio_upload' channel_id=channel_id %}" class="btn-add-link">
           ＋ 音声を追加する
         </a>
