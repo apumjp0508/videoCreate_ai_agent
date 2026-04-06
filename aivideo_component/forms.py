@@ -76,3 +76,26 @@ class AudioEditForm(forms.Form):
         label='音声ファイル（変更する場合のみ選択）',
         required=False,
     )
+
+
+# ─────────────────────── AI Provider ───────────────────────
+
+# provider 一覧をここで一元管理する。
+# 将来 status / message / constraints などを追加するときはここに項目を追加する。
+AI_PROVIDERS = [
+    {'id': 'runway', 'name': 'Runway'},
+    {'id': 'pika',   'name': 'Pika'},
+    {'id': 'kling',  'name': 'Kling'},
+]
+
+
+class AIProviderSelectForm(forms.Form):
+    """
+    動画生成に使う AI プロバイダを選択するフォーム（動画作成ステップ3）。
+    choices は AI_PROVIDERS から自動生成するためハードコーディングしていない。
+    """
+    provider = forms.ChoiceField(
+        label='生成AI',
+        choices=[(p['id'], p['name']) for p in AI_PROVIDERS],
+        widget=forms.RadioSelect,
+    )

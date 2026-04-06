@@ -7,6 +7,7 @@ from .forms import (
     AudioEditForm, AudioUploadForm,
     ContentSelectForm,
     ImageEditForm, ImageUploadForm,
+    AIProviderSelectForm, AI_PROVIDERS,
 )
 from .models import GeneratedAudio, GeneratedImage
 
@@ -62,7 +63,7 @@ class ContentSelectView(View):
         )
         if form.is_valid():
             # TODO: 動画生成ジョブ作成処理をここに追加する
-            return redirect('accounts:dashboard')
+            return redirect('aivideo_component:provider_select', channel_id=channel_id)
         ctx['form'] = form
         return render(request, 'aivideo_component/content_select.html', ctx)
 
@@ -286,3 +287,49 @@ class AudioDeleteView(View):
         audio.delete()
         messages.success(request, '音声を削除しました。')
         return redirect('aivideo_component:content_select', channel_id=channel_id)
+
+
+# ─────────────────────── AI Provider Select ───────────────────────
+
+class AIProviderSelectView(View):
+    """
+    動画生成に使う AI プロバイダを選択する画面（動画作成ステップ3）。
+
+    現時点はフォーム表示のみ。将来の拡張ポイント:
+      - providers に status / message を付与して適合判定を表示
+      - POST 処理で動画生成ジョブを作成
+    """
+
+    def _build_providers(self):
+        """
+        テンプレートに渡す provider リストを組み立てる。
+        将来は画像・音声のメタ情報を元に status / message を付与する。
+        例: {'id': 'runway', 'name': 'Runway', 'status': 'ok', 'message': '使用可能'}
+        """
+        return [
+            {**p, 'status': None, 'message': None}
+            for p in AI_PROVIDERS
+        ]
+
+    def get(self, request, channel_id: int):
+        if not request.user.is_authenticated:
+            return redirect('accounts:login')
+        return render(request, 'aivideo_component/provider_select.html', {
+            'form': AIProviderSelectForm(),
+            'providers': self._build_providers(),
+            'channel_id': channel_id,
+        })
+
+    def post(self, request, channel_id: int):
+        if not request.user.is_authenticated:
+            return redirect('accounts:login')
+        form = AIProviderSelectForm(request.POST)
+        if form.is_valid():
+            # TODO: 選択した provider で動画生成ジョブを作成する
+            messages.success(request, f'生成AI「{form.cleaned_data["provider"]}」を選択しました。')
+            return redirect('accounts:dashboard')
+        return render(request, 'aivideo_component/provider_select.html', {
+            'form': form,
+            'providers': self._build_providers(),
+            'channel_id': channel_id,
+        })

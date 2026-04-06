@@ -1,0 +1,262 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}生成AI選択 — VideoCreate AI{% endblock %}
+
+{% block content %}
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: #0a0c14;
+    background-image:
+      radial-gradient(ellipse 70% 50% at 15% 5%,  rgba(99, 55, 255, 0.15) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 85% 90%, rgba(0, 200, 255, 0.10) 0%, transparent 50%);
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    color: #e2e8f0;
+  }
+
+  /* ===== Header ===== */
+  .top-header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10, 12, 20, 0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    padding: 0 2rem; height: 60px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header-brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
+  .header-brand .logo-icon {
+    width: 30px; height: 30px; border-radius: 7px;
+    background: linear-gradient(135deg, #6337ff, #00c8ff);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .header-brand .logo-icon svg { width: 16px; height: 16px; fill: #fff; }
+  .header-brand .logo-text {
+    font-size: 0.95rem; font-weight: 700;
+    background: linear-gradient(90deg, #a78bfa, #38bdf8);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .header-right { display: flex; align-items: center; gap: 1rem; }
+  .user-badge { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: #94a3b8; }
+  .user-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, #6337ff, #00c8ff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem; font-weight: 700; color: #fff;
+  }
+  .btn-logout {
+    padding: 0.4rem 0.9rem; font-size: 0.78rem; font-weight: 600;
+    color: #94a3b8; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+    cursor: pointer; transition: background 0.2s, color 0.2s;
+  }
+  .btn-logout:hover { background: rgba(255,255,255,0.09); color: #e2e8f0; }
+
+  /* ===== Page body ===== */
+  .page-body { max-width: 600px; margin: 0 auto; padding: 2.5rem 2rem 4rem; }
+
+  /* ===== Breadcrumb ===== */
+  .breadcrumb {
+    font-size: 0.78rem; color: #64748b; margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: 0.4rem;
+  }
+  .breadcrumb a { color: #818cf8; text-decoration: none; }
+  .breadcrumb a:hover { text-decoration: underline; color: #a5b4fc; }
+  .breadcrumb .sep { color: #475569; }
+
+  /* ===== Page heading ===== */
+  .page-eyebrow {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: #6337ff; margin-bottom: 0.5rem;
+  }
+  .page-title { font-size: 1.5rem; font-weight: 800; color: #f1f5f9; margin-bottom: 0.4rem; }
+  .page-sub { font-size: 0.9rem; color: #94a3b8; margin-bottom: 2rem; line-height: 1.65; }
+
+  /* ===== Form card ===== */
+  .form-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px; padding: 2rem;
+  }
+  .form-section-title {
+    font-size: 0.88rem; font-weight: 700; color: #94a3b8;
+    margin-bottom: 1.25rem; letter-spacing: 0.05em; text-transform: uppercase;
+  }
+
+  /* ===== Provider card list ===== */
+  /*
+   * 将来: provider に status（'ok' / 'caution' / 'unavailable'）が付いたとき、
+   * .provider-card に data-status 属性を追加して背景・ボーダー色を変えられる構造にしている。
+   */
+  .provider-list {
+    display: flex; flex-direction: column; gap: 0.75rem;
+    margin-bottom: 2rem;
+  }
+  .provider-card {
+    display: flex; align-items: center; gap: 1rem;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 12px; padding: 1rem 1.25rem;
+    cursor: pointer; transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+  .provider-card:hover {
+    border-color: rgba(99,55,255,0.4);
+    background: rgba(99,55,255,0.05);
+  }
+  /* ラジオボタンを選択したときにカードをハイライト */
+  .provider-card input[type="radio"]:checked ~ .provider-info .provider-name {
+    color: #a78bfa;
+  }
+
+  .provider-radio { accent-color: #6337ff; width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; }
+  .provider-info { flex: 1; }
+  .provider-name { font-size: 0.95rem; font-weight: 700; color: #e2e8f0; }
+
+  /*
+   * 将来の適合判定バッジ用スタイル。
+   * status が渡ってきたときに表示する。現時点は非表示。
+   * 'ok'        → .status-ok       (緑)
+   * 'caution'   → .status-caution  (黄)
+   * 'unavailable' → .status-unavailable (赤)
+   */
+  .provider-status { font-size: 0.75rem; font-weight: 600; margin-top: 0.25rem; }
+  .status-ok         { color: #4ade80; }
+  .status-caution    { color: #facc15; }
+  .status-unavailable { color: #f87171; }
+
+  /* ===== Error ===== */
+  .field-errors { margin-top: 0.5rem; font-size: 0.78rem; color: #f87171; }
+
+  /* ===== Buttons ===== */
+  .form-actions {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; margin-top: 0.5rem; flex-wrap: wrap;
+  }
+  .btn-primary {
+    display: inline-block; padding: 0.75rem 2rem;
+    background: linear-gradient(135deg, #6337ff 0%, #3b82f6 60%, #00c8ff 100%);
+    color: #fff; font-size: 0.88rem; font-weight: 700;
+    border: none; border-radius: 10px; cursor: pointer;
+    transition: opacity 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 18px rgba(99,55,255,0.35);
+    letter-spacing: 0.04em;
+  }
+  .btn-primary:hover { opacity: 0.9; box-shadow: 0 6px 24px rgba(99,55,255,0.5); }
+  .btn-back {
+    font-size: 0.84rem; color: #64748b; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 0.35rem; transition: color 0.2s;
+  }
+  .btn-back:hover { color: #94a3b8; }
+
+  @media (max-width: 640px) {
+    .top-header { padding: 0 1rem; }
+    .page-body { padding: 1.5rem 1rem 3rem; }
+    .form-card { padding: 1.5rem; }
+    .form-actions { flex-direction: column-reverse; align-items: stretch; }
+    .btn-primary { text-align: center; }
+  }
+</style>
+
+<!-- ===== Header ===== -->
+<header class="top-header">
+  <a href="{% url 'accounts:dashboard' %}" class="header-brand">
+    <span class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    </span>
+    <span class="logo-text">VideoCreate AI</span>
+  </a>
+  <div class="header-right">
+    <div class="user-badge">
+      <span class="user-avatar">{{ user.email|first|upper }}</span>
+      <span>{{ user.email }}</span>
+    </div>
+    <form method="post" action="{% url 'accounts:logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn-logout">ログアウト</button>
+    </form>
+  </div>
+</header>
+
+<!-- ===== Main ===== -->
+<div class="page-body">
+
+  <!-- パンくず -->
+  <nav class="breadcrumb">
+    <a href="{% url 'accounts:dashboard' %}">ダッシュボード</a>
+    <span class="sep">›</span>
+    <a href="{% url 'aivideo_component:content_select' channel_id=channel_id %}">コンテンツ選択</a>
+    <span class="sep">›</span>
+    <span>生成AI選択</span>
+  </nav>
+
+  <!-- ページタイトル -->
+  <p class="page-eyebrow">Step 3</p>
+  <h1 class="page-title">生成AIを選択してください</h1>
+  <p class="page-sub">
+    動画の生成に使う AI プロバイダを選んでください。<br>
+    選択した画像・音声に対応したプロバイダを使用します。
+  </p>
+
+  <!-- ===== フォーム ===== -->
+  <div class="form-card">
+    <p class="form-section-title">プロバイダを選択</p>
+
+    <form method="post">
+      {% csrf_token %}
+
+      <!--
+        provider カード一覧。
+        将来 view 側で status / message を付与すれば、
+        data-status 属性と .status-* クラスで適合判定を表示できる。
+      -->
+      <div class="provider-list">
+        {% for provider in providers %}
+          <label class="provider-card" for="provider_{{ provider.id }}">
+            <input
+              class="provider-radio"
+              type="radio"
+              id="provider_{{ provider.id }}"
+              name="provider"
+              value="{{ provider.id }}"
+              {% if form.provider.value == provider.id %}checked{% endif %}
+            >
+            <div class="provider-info">
+              <div class="provider-name">{{ provider.name }}</div>
+
+              {# 将来: provider.status が設定されたときにバッジを表示する #}
+              {% if provider.status == 'ok' %}
+                <div class="provider-status status-ok">使用可能</div>
+              {% elif provider.status == 'caution' %}
+                <div class="provider-status status-caution">要確認</div>
+              {% elif provider.status == 'unavailable' %}
+                <div class="provider-status status-unavailable">使用不可</div>
+              {% endif %}
+
+              {% if provider.message %}
+                <div class="provider-status" style="color:#64748b;">{{ provider.message }}</div>
+              {% endif %}
+            </div>
+          </label>
+        {% endfor %}
+      </div>
+
+      <!-- バリデーションエラー -->
+      {% if form.provider.errors %}
+        <div class="field-errors">{{ form.provider.errors }}</div>
+      {% endif %}
+
+      <!-- ボタン -->
+      <div class="form-actions">
+        <a href="{% url 'aivideo_component:content_select' channel_id=channel_id %}" class="btn-back">
+          ← コンテンツ選択に戻る
+        </a>
+        <button type="submit" class="btn-primary">この AI で生成する →</button>
+      </div>
+
+    </form>
+  </div>
+
+</div>
+{% endblock %}

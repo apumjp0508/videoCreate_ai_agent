@@ -17,4 +17,7 @@ urlpatterns = [
     path('content/select/<int:channel_id>/audio/upload/', views.AudioUploadView.as_view(), name='audio_upload'),
     path('content/select/<int:channel_id>/audio/<int:pk>/edit/', views.AudioEditView.as_view(), name='audio_edit'),
     path('content/select/<int:channel_id>/audio/<int:pk>/delete/', views.AudioDeleteView.as_view(), name='audio_delete'),
+
+    # 動画作成フロー ステップ3: 生成AI選択
+    path('content/select/<int:channel_id>/provider/select/', views.AIProviderSelectView.as_view(), name='provider_select'),
 ]
