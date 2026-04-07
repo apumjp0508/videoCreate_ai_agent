@@ -206,6 +206,8 @@ class VideoJobAsset(models.Model):
         max_length=30,
         choices=AssetRole.choices,
     )
+    # このJobでの素材の用途・使い方。動画AI へ渡すプロンプトの一部として使用する。
+    description = models.TextField(help_text='このJobでの素材の用途説明')
 
     class Meta:
         db_table = 'video_job_assets'

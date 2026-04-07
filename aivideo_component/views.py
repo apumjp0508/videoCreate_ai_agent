@@ -1,3 +1,4 @@
+import json
 import logging
 import traceback
 
@@ -63,6 +64,8 @@ class ContentSelectView(View):
             image_choices=ctx['image_choices'],
             audio_choices=ctx['audio_choices'],
         )
+        ctx['image_state'] = []
+        ctx['audio_state'] = []
         return render(request, 'aivideo_component/content_select.html', ctx)
 
     def post(self, request, channel_id: int):
@@ -74,16 +77,64 @@ class ContentSelectView(View):
             image_choices=ctx['image_choices'],
             audio_choices=ctx['audio_choices'],
         )
-        if form.is_valid():
-            # 選択内容をセッションに保存して AI プロバイダー選択画面へ渡す
-            request.session[_CONTENT_SELECTION_SESSION_KEY] = {
-                'script':       form.cleaned_data['script'],
-                'image_id':     form.cleaned_data.get('image') or None,
-                'audio_id':     form.cleaned_data.get('audio') or None,
-                'publish_mode': form.cleaned_data['publish_mode'],
-            }
-            return redirect('aivideo_component:provider_select', channel_id=channel_id)
         ctx['form'] = form
+        ctx['image_state'] = []
+        ctx['audio_state'] = []
+
+        if form.is_valid():
+            image_ids = [int(x) for x in form.cleaned_data.get('image') or []]
+            audio_ids = [int(x) for x in form.cleaned_data.get('audio') or []]
+
+            # 各素材のdescriptionを収集・バリデーション（必須）
+            image_descriptions: dict[int, str] = {}
+            image_desc_errors: set[int] = set()
+            for img_id in image_ids:
+                desc = request.POST.get(f'image_description_{img_id}', '').strip()
+                if desc:
+                    image_descriptions[img_id] = desc
+                else:
+                    image_desc_errors.add(img_id)
+
+            audio_descriptions: dict[int, str] = {}
+            audio_desc_errors: set[int] = set()
+            for aud_id in audio_ids:
+                desc = request.POST.get(f'audio_description_{aud_id}', '').strip()
+                if desc:
+                    audio_descriptions[aud_id] = desc
+                else:
+                    audio_desc_errors.add(aud_id)
+
+            if not image_desc_errors and not audio_desc_errors:
+                # 選択内容をセッションに保存して AI プロバイダー選択画面へ渡す
+                request.session[_CONTENT_SELECTION_SESSION_KEY] = {
+                    'script':             form.cleaned_data['script'],
+                    'image_ids':          image_ids,
+                    'audio_ids':          audio_ids,
+                    'publish_mode':       form.cleaned_data['publish_mode'],
+                    'image_descriptions': {str(k): v for k, v in image_descriptions.items()},
+                    'audio_descriptions': {str(k): v for k, v in audio_descriptions.items()},
+                }
+                return redirect('aivideo_component:provider_select', channel_id=channel_id)
+
+            # description 未入力エラー → 再描画用にstate を構築
+            ctx['image_state'] = [
+                {
+                    'id':    str(img_id),
+                    'desc':  image_descriptions.get(img_id, ''),
+                    'error': img_id in image_desc_errors,
+                }
+                for img_id in image_ids
+            ]
+            ctx['audio_state'] = [
+                {
+                    'id':    str(aud_id),
+                    'desc':  audio_descriptions.get(aud_id, ''),
+                    'error': aud_id in audio_desc_errors,
+                }
+                for aud_id in audio_ids
+            ]
+            ctx['has_desc_errors'] = True
+
         return render(request, 'aivideo_component/content_select.html', ctx)
 
 
@@ -428,10 +479,12 @@ class AIProviderSelectView(View):
         セッションの選択内容と provider_key から ContentValidationInput を組み立てる。
         モデルから必要なメタデータを取得してバリデーター用の型に変換する。
         """
+        # バリデーションは先頭の1件で代表チェックする
         image_meta = None
-        if selection.get('image_id'):
+        image_ids = selection.get('image_ids') or []
+        if image_ids:
             try:
-                img = GeneratedImage.objects.get(pk=selection['image_id'])
+                img = GeneratedImage.objects.get(pk=int(image_ids[0]))
                 image_meta = ImageMeta(
                     image_id=img.pk,
                     mime_type=img.mime_type,
@@ -444,9 +497,10 @@ class AIProviderSelectView(View):
                 pass
 
         audio_meta = None
-        if selection.get('audio_id'):
+        audio_ids = selection.get('audio_ids') or []
+        if audio_ids:
             try:
-                aud = GeneratedAudio.objects.get(pk=selection['audio_id'])
+                aud = GeneratedAudio.objects.get(pk=int(audio_ids[0]))
                 audio_meta = AudioMeta(
                     audio_id=aud.pk,
                     mime_type=aud.mime_type,
@@ -538,9 +592,11 @@ class AIProviderSelectView(View):
                 credential_id=credential_id,
                 model_id=model_id,
                 script=selection.get('script', ''),
-                image_id=int(selection['image_id']) if selection.get('image_id') else None,
-                audio_id=int(selection['audio_id']) if selection.get('audio_id') else None,
+                image_ids=[int(x) for x in selection.get('image_ids', []) if x],
+                audio_ids=[int(x) for x in selection.get('audio_ids', []) if x],
                 publish_mode=selection.get('publish_mode', 'private'),
+                image_descriptions={int(k): v for k, v in selection.get('image_descriptions', {}).items()},
+                audio_descriptions={int(k): v for k, v in selection.get('audio_descriptions', {}).items()},
             )
         except VideoAiConfigNotFoundError as exc:
             logger.error('VideoAiConfigNotFoundError: %s', exc)

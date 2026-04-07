@@ -91,6 +91,7 @@ class DjangoVideoGenerationService(DummyVideoGenerationService):
     def _fetch_materials_sync(self, input: FetchMaterialsInput) -> FetchMaterialsOutput:
         images = self._fetch_images(input.user_id, input.image_ids)
         audios = self._fetch_audios(input.user_id, input.audio_ids)
+        self._attach_descriptions(input.job_id, images, audios)
         return FetchMaterialsOutput(
             image_ids=[img.id for img in images],
             audio_ids=[aud.id for aud in audios],
@@ -156,6 +157,27 @@ class DjangoVideoGenerationService(DummyVideoGenerationService):
             codec=obj.codec or "",
             file_size_bytes=obj.file_size_bytes or 0,
         )
+
+    def _attach_descriptions(
+        self,
+        job_id_str: str,
+        images: list[ImageMaterial],
+        audios: list[AudioMaterial],
+    ) -> None:
+        """VideoJobAsset からこのJobでの素材説明を取得して ImageMaterial / AudioMaterial に付与する。"""
+        from jobs.models import VideoJobAsset
+        try:
+            job_id = int(job_id_str)
+        except (ValueError, TypeError):
+            return
+        asset_desc_map = {
+            a.asset_id: a.description
+            for a in VideoJobAsset.objects.filter(job_id=job_id)
+        }
+        for img in images:
+            img.description = asset_desc_map.get(img.id, "")
+        for aud in audios:
+            aud.description = asset_desc_map.get(aud.id, "")
 
     # ── fetch_ai_config ─────────────────────────────────────────
 

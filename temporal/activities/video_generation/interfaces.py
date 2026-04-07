@@ -44,6 +44,7 @@ class ImageMaterial:
     height: int = 0
     aspect_ratio: str = ""  # 例: "16:9", "1:1", "9:16"
     file_size_bytes: int = 0
+    description: str = ""
 
 
 @dataclass
@@ -61,6 +62,7 @@ class AudioMaterial:
     channels: int = 0       # 1=モノラル, 2=ステレオ
     codec: str = ""         # 例: "mp3", "aac", "wav"
     file_size_bytes: int = 0
+    description: str = ""
 
 
 @dataclass

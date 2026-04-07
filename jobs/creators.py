@@ -45,9 +45,11 @@ class JobCreatorProtocol(Protocol):
         credential_id: int,
         model_id: int,
         script: str,
-        image_id: int | None,
-        audio_id: int | None,
+        image_ids: list[int],
+        audio_ids: list[int],
         publish_mode: str,
+        image_descriptions: dict[int, str],
+        audio_descriptions: dict[int, str],
     ) -> Any:
         ...
 
@@ -72,10 +74,17 @@ class VideoJobCreator:
         credential_id: int,
         model_id: int,
         script: str,
-        image_id: int | None,
-        audio_id: int | None,
+        image_ids: list[int] | None = None,
+        audio_ids: list[int] | None = None,
         publish_mode: str = 'private',
+        image_descriptions: dict[int, str] | None = None,
+        audio_descriptions: dict[int, str] | None = None,
     ) -> VideoJob:
+        image_ids = image_ids or []
+        audio_ids = audio_ids or []
+        image_descriptions = image_descriptions or {}
+        audio_descriptions = audio_descriptions or {}
+
         credential, model = self._resolve_credential_and_model(user, credential_id, model_id)
         channel = (
             YoutubeChannel.objects
@@ -98,19 +107,25 @@ class VideoJobCreator:
                 publish_mode=publish_mode,
             )
 
-            if image_id:
-                VideoJobAsset.objects.create(
+            VideoJobAsset.objects.bulk_create([
+                VideoJobAsset(
                     job=job,
-                    asset_id=image_id,
+                    asset_id=img_id,
                     asset_role=AssetRole.MAIN_IMAGE,
+                    description=image_descriptions.get(img_id, ''),
                 )
+                for img_id in image_ids
+            ])
 
-            if audio_id:
-                VideoJobAsset.objects.create(
+            VideoJobAsset.objects.bulk_create([
+                VideoJobAsset(
                     job=job,
-                    asset_id=audio_id,
+                    asset_id=aud_id,
                     asset_role=AssetRole.BGM,
+                    description=audio_descriptions.get(aud_id, ''),
                 )
+                for aud_id in audio_ids
+            ])
 
             VideoJobEvent.objects.create(
                 job=job,
@@ -120,8 +135,8 @@ class VideoJobCreator:
                     'credential_id': credential.id,
                     'model_id':      model.id,
                     'model_name':    model.model_name,
-                    'image_id':      image_id,
-                    'audio_id':      audio_id,
+                    'image_ids':     image_ids,
+                    'audio_ids':     audio_ids,
                 },
             )
 

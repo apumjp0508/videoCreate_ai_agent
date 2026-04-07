@@ -217,6 +217,23 @@
   .field-errors { margin-top: 0.4rem; font-size: 0.75rem; color: #f87171; }
   .form-divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 1.75rem 0; }
 
+  /* ===== Checkbox list (MultipleChoiceField) ===== */
+  .checkbox-list ul { display: flex; flex-direction: column; gap: 0.5rem; margin: 0.25rem 0 0; padding: 0; }
+  .checkbox-list li { list-style: none; }
+  .checkbox-list label {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.55rem 0.75rem; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.03);
+    color: #e2e8f0; font-size: 0.88rem; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .checkbox-list label:hover { background: rgba(99,55,255,0.08); border-color: rgba(99,55,255,0.35); }
+  .checkbox-list input[type="checkbox"] { accent-color: #6337ff; width: 1rem; height: 1rem; cursor: pointer; flex-shrink: 0; }
+  .checkbox-list input[type="checkbox"]:disabled + * { opacity: 0.4; }
+  .checkbox-limit-hint { margin-top: 0.35rem; font-size: 0.75rem; color: #94a3b8; }
+  .checkbox-limit-hint.over { color: #f87171; font-weight: 600; }
+
   /* ===== Buttons ===== */
   .form-actions {
     display: flex; align-items: center; justify-content: space-between;
@@ -237,6 +254,49 @@
     display: inline-flex; align-items: center; gap: 0.35rem; transition: color 0.2s;
   }
   .btn-back:hover { color: #94a3b8; }
+
+  /* ===== Per-asset description (Job作成フォーム内) ===== */
+  .asset-select-list { display: flex; flex-direction: column; gap: 0.5rem; margin: 0.25rem 0 0; }
+  .asset-select-item {
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px; overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .asset-select-item.is-checked { border-color: rgba(99,55,255,0.4); }
+  .asset-check-label {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.55rem 0.75rem;
+    background: rgba(255,255,255,0.03);
+    color: #e2e8f0; font-size: 0.88rem; cursor: pointer;
+    transition: background 0.15s; user-select: none;
+  }
+  .asset-check-label:hover { background: rgba(99,55,255,0.08); }
+  .asset-check-label input[type="checkbox"] {
+    accent-color: #6337ff; width: 1rem; height: 1rem;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .asset-check-label input[type="checkbox"]:disabled { cursor: not-allowed; }
+  .asset-check-label input[type="checkbox"]:disabled ~ .asset-name { opacity: 0.4; }
+  .asset-desc-wrap {
+    padding: 0.5rem 0.75rem 0.65rem;
+    background: rgba(99,55,255,0.03);
+    border-top: 1px solid rgba(99,55,255,0.15);
+  }
+  .asset-desc-label {
+    font-size: 0.75rem; font-weight: 600; color: #94a3b8; margin-bottom: 0.3rem;
+  }
+  .asset-desc-label .req { color: #f87171; }
+  .asset-desc-wrap textarea {
+    width: 100%; padding: 0.5rem 0.75rem;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 7px; color: #e2e8f0; font-size: 0.82rem; line-height: 1.55;
+    font-family: inherit; resize: vertical; outline: none; transition: border-color 0.2s;
+  }
+  .asset-desc-wrap textarea:focus {
+    border-color: rgba(99,55,255,0.5); background: rgba(99,55,255,0.05);
+  }
+  .asset-desc-wrap textarea.has-error { border-color: rgba(248,113,113,0.5); }
+  .asset-desc-error { margin-top: 0.3rem; font-size: 0.73rem; color: #f87171; }
 
   @media (max-width: 640px) {
     .top-header { padding: 0 1rem; }
@@ -437,10 +497,29 @@
 
       <!-- 画像選択 -->
       <div class="field-group">
-        <label class="field-label" for="{{ form.image.id_for_label }}">使用する画像</label>
+        <label class="field-label">使用する画像（最大10枚）</label>
         {% if has_images %}
-          {{ form.image }}
-          <p class="field-hint">このチャンネルで使用できる背景画像を選択してください。</p>
+          <div class="asset-select-list" id="image-checkbox-list">
+            {% for img in images %}
+            <div class="asset-select-item" data-asset-id="{{ img.pk }}">
+              <label class="asset-check-label">
+                <input type="checkbox" name="image" value="{{ img.pk }}" class="asset-checkbox">
+                <span class="asset-name">{{ img.title }}</span>
+              </label>
+              <div class="asset-desc-wrap" style="display:none;">
+                <p class="asset-desc-label">このJobでの用途・使い方 <span class="req">*</span></p>
+                <textarea
+                  name="image_description_{{ img.pk }}"
+                  rows="2"
+                  placeholder="例: オープニングシーンの背景として使用。横長構図で空の比率が高い。"
+                ></textarea>
+                <div class="asset-desc-error" style="display:none;">用途説明を入力してください。</div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <p class="checkbox-limit-hint" id="image-limit-hint">0 / 10 枚選択中</p>
+          <p class="field-hint">複数選択可。選択した各画像にこのJobでの用途説明を必ず入力してください。</p>
         {% else %}
           <p class="field-hint" style="color:#f87171;">
             このチャンネルに登録された画像がありません。上の「＋ 画像を追加」から追加してください。
@@ -455,10 +534,29 @@
 
       <!-- 音声選択 -->
       <div class="field-group">
-        <label class="field-label" for="{{ form.audio.id_for_label }}">使用する音声 / BGM</label>
+        <label class="field-label">使用する音声 / BGM（最大10個）</label>
         {% if has_audios %}
-          {{ form.audio }}
-          <p class="field-hint">このチャンネルで使用できる音声を選択してください。</p>
+          <div class="asset-select-list" id="audio-checkbox-list">
+            {% for aud in audios %}
+            <div class="asset-select-item" data-asset-id="{{ aud.pk }}">
+              <label class="asset-check-label">
+                <input type="checkbox" name="audio" value="{{ aud.pk }}" class="asset-checkbox">
+                <span class="asset-name">{{ aud.title }}</span>
+              </label>
+              <div class="asset-desc-wrap" style="display:none;">
+                <p class="asset-desc-label">このJobでの用途・使い方 <span class="req">*</span></p>
+                <textarea
+                  name="audio_description_{{ aud.pk }}"
+                  rows="2"
+                  placeholder="例: BGMとして全編に使用。明るいテンポでオープニングに最適。"
+                ></textarea>
+                <div class="asset-desc-error" style="display:none;">用途説明を入力してください。</div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <p class="checkbox-limit-hint" id="audio-limit-hint">0 / 10 個選択中</p>
+          <p class="field-hint">複数選択可。選択した各音声にこのJobでの用途説明を必ず入力してください。</p>
         {% else %}
           <p class="field-hint" style="color:#f87171;">
             このチャンネルに登録された音声がありません。上の「＋ 音声を追加」から追加してください。
@@ -466,6 +564,9 @@
         {% endif %}
         {% if form.audio.errors %}
           <div class="field-errors">{{ form.audio.errors }}</div>
+        {% endif %}
+        {% if has_desc_errors %}
+          <div class="field-errors" style="margin-top:0.5rem;">選択した素材すべてに用途説明を入力してください。</div>
         {% endif %}
       </div>
 
@@ -491,4 +592,84 @@
   </div>
 
 </div>
+
+{{ image_state|json_script:"image-state-data" }}
+{{ audio_state|json_script:"audio-state-data" }}
+
+<script>
+(function () {
+  const MAX = 10;
+
+  // description エリアの表示/非表示と選択カウント更新
+  function setupAssetSelect(listId, hintId) {
+    const list = document.getElementById(listId);
+    const hint = document.getElementById(hintId);
+    if (!list) return;
+
+    const checkboxes = list.querySelectorAll('.asset-checkbox');
+
+    function updateCount() {
+      if (!hint) return;
+      const checked = Array.from(checkboxes).filter(c => c.checked).length;
+      const unit = listId.includes('image') ? ' 枚選択中' : ' 個選択中';
+      hint.textContent = checked + ' / ' + MAX + unit;
+      hint.classList.toggle('over', checked > MAX);
+      checkboxes.forEach(cb => {
+        cb.disabled = !cb.checked && checked >= MAX;
+      });
+    }
+
+    checkboxes.forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        const item = this.closest('.asset-select-item');
+        const wrap = item.querySelector('.asset-desc-wrap');
+        item.classList.toggle('is-checked', this.checked);
+        wrap.style.display = this.checked ? '' : 'none';
+        if (!this.checked) {
+          const ta = wrap.querySelector('textarea');
+          ta.value = '';
+          ta.classList.remove('has-error');
+          wrap.querySelector('.asset-desc-error').style.display = 'none';
+        }
+        updateCount();
+      });
+    });
+
+    updateCount();
+  }
+
+  // POST エラー後の状態復元（チェック状態・description 値・エラー表示）
+  function restoreAssetState(listId, stateDataId) {
+    const el = document.getElementById(stateDataId);
+    if (!el) return;
+    const state = JSON.parse(el.textContent);
+    if (!state || !state.length) return;
+
+    const list = document.getElementById(listId);
+    if (!list) return;
+
+    state.forEach(function(s) {
+      const cb = list.querySelector('input.asset-checkbox[value="' + s.id + '"]');
+      if (!cb) return;
+      cb.checked = true;
+      const item = cb.closest('.asset-select-item');
+      item.classList.add('is-checked');
+      const wrap = item.querySelector('.asset-desc-wrap');
+      wrap.style.display = '';
+      const ta = wrap.querySelector('textarea');
+      ta.value = s.desc || '';
+      if (s.error) {
+        ta.classList.add('has-error');
+        wrap.querySelector('.asset-desc-error').style.display = '';
+      }
+    });
+  }
+
+  // 復元 → リスナー登録 → カウント更新の順で実行
+  restoreAssetState('image-checkbox-list', 'image-state-data');
+  restoreAssetState('audio-checkbox-list', 'audio-state-data');
+  setupAssetSelect('image-checkbox-list', 'image-limit-hint');
+  setupAssetSelect('audio-checkbox-list', 'audio-limit-hint');
+})();
+</script>
 {% endblock %}

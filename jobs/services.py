@@ -57,9 +57,11 @@ def create_video_job(
     credential_id: int,
     model_id: int,
     script: str,
-    image_id: int | None,
-    audio_id: int | None,
+    image_ids: list[int] | None = None,
+    audio_ids: list[int] | None = None,
     publish_mode: str = 'private',
+    image_descriptions: dict[int, str] | None = None,
+    audio_descriptions: dict[int, str] | None = None,
     creator: JobCreatorProtocol | None = None,
 ) -> VideoJob:
     """
@@ -81,9 +83,11 @@ def create_video_job(
         credential_id=credential_id,
         model_id=model_id,
         script=script,
-        image_id=image_id,
-        audio_id=audio_id,
+        image_ids=image_ids or [],
+        audio_ids=audio_ids or [],
         publish_mode=publish_mode,
+        image_descriptions=image_descriptions or {},
+        audio_descriptions=audio_descriptions or {},
     )
 
 

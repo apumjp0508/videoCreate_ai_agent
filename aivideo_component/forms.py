@@ -13,15 +13,17 @@ class ContentSelectForm(forms.Form):
             'placeholder': '動画のスクリプトを入力してください',
         }),
     )
-    image = forms.ChoiceField(
+    image = forms.MultipleChoiceField(
         label='画像',
         choices=[],
         required=False,
+        widget=forms.CheckboxSelectMultiple,
     )
-    audio = forms.ChoiceField(
+    audio = forms.MultipleChoiceField(
         label='音声',
         choices=[],
         required=False,
+        widget=forms.CheckboxSelectMultiple,
     )
 
     publish_mode = forms.ChoiceField(
