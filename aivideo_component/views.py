@@ -10,6 +10,7 @@ from .forms import (
     ImageEditForm, ImageUploadForm,
     AIProviderSelectForm, AI_PROVIDERS,
 )
+from .metadata.service import apply_audio_metadata, apply_image_metadata
 from .models import GeneratedAudio, GeneratedImage
 from .validation.protocol import AudioMeta, ContentValidationInput, ImageMeta
 from .validation.registry import UnknownProviderError, validate_content
@@ -102,11 +103,12 @@ class ImageUploadView(View):
         )
         form = ImageUploadForm(request.POST, request.FILES)
         if form.is_valid():
-            GeneratedImage.objects.create(
+            instance = GeneratedImage.objects.create(
                 youtube_channel=channel,
                 title=form.cleaned_data['title'],
                 image_file=form.cleaned_data['file'],
             )
+            apply_image_metadata(instance, form.cleaned_data['file'])
             messages.success(request, '画像を保存しました。')
             return redirect('aivideo_component:content_select', channel_id=channel_id)
 
@@ -145,11 +147,14 @@ class ImageEditView(View):
         form = ImageEditForm(request.POST, request.FILES)
         if form.is_valid():
             image.title = form.cleaned_data['title']
-            if form.cleaned_data.get('file'):
+            new_file = form.cleaned_data.get('file')
+            if new_file:
                 # 古いファイルをストレージから削除してから差し替え
                 image.image_file.delete(save=False)
-                image.image_file = form.cleaned_data['file']
+                image.image_file = new_file
             image.save()
+            if new_file:
+                apply_image_metadata(image, new_file)
             messages.success(request, '画像を更新しました。')
             return redirect('aivideo_component:content_select', channel_id=channel_id)
 
@@ -213,11 +218,12 @@ class AudioUploadView(View):
         )
         form = AudioUploadForm(request.POST, request.FILES)
         if form.is_valid():
-            GeneratedAudio.objects.create(
+            instance = GeneratedAudio.objects.create(
                 youtube_channel=channel,
                 title=form.cleaned_data['title'],
                 audio_file=form.cleaned_data['file'],
             )
+            apply_audio_metadata(instance, form.cleaned_data['file'])
             messages.success(request, '音声を保存しました。')
             return redirect('aivideo_component:content_select', channel_id=channel_id)
 
@@ -256,10 +262,13 @@ class AudioEditView(View):
         form = AudioEditForm(request.POST, request.FILES)
         if form.is_valid():
             audio.title = form.cleaned_data['title']
-            if form.cleaned_data.get('file'):
+            new_file = form.cleaned_data.get('file')
+            if new_file:
                 audio.audio_file.delete(save=False)
-                audio.audio_file = form.cleaned_data['file']
+                audio.audio_file = new_file
             audio.save()
+            if new_file:
+                apply_audio_metadata(audio, new_file)
             messages.success(request, '音声を更新しました。')
             return redirect('aivideo_component:content_select', channel_id=channel_id)
 
