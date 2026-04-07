@@ -4,3 +4,6 @@ psycopg2-binary==2.9.11
 sqlparse==0.5.5
 cryptography==42.0.8
 temporalio>=1.7.0
+Pillow
+mutagen
+python-magic
