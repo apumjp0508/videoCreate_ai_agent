@@ -5,6 +5,7 @@ Django 側から見た job の正本。
 画面表示・検索・絞り込み・ユーザー問い合わせ対応はここを基準にする。
 
 テーブル構成:
+  Prompt          ─ プロンプトテキスト（VideoJob から FK 参照）
   VideoJob        ─ job 本体
   VideoJobAsset   ─ job に紐づく素材（中間テーブル）
   VideoJobEvent   ─ job の履歴・イベントログ
@@ -65,6 +66,34 @@ class AssetRole(models.TextChoices):
 
 
 # ─────────────────────────────────────────────────────────────
+# Prompt  ─ プロンプトテキスト
+# ─────────────────────────────────────────────────────────────
+
+class Prompt(models.Model):
+    """
+    ユーザーが入力したプロンプトテキストを保存するテーブル。
+
+    VideoJob から FK で参照され、Temporal には prompt_id（PK）を渡す。
+    Activity fetch_request_definition が prompt_id で DB クエリしてテキストを返す。
+    将来的にはプロンプトの再利用・テンプレート化などに拡張できる。
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='prompts',
+    )
+    prompt_text = models.TextField()
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'prompts'
+
+    def __str__(self):
+        preview = self.prompt_text[:40].replace('\n', ' ')
+        return f'Prompt #{self.pk} [{preview}...]'
+
+
+# ─────────────────────────────────────────────────────────────
 # VideoJob  ─ job の正本
 # ─────────────────────────────────────────────────────────────
 
@@ -90,11 +119,17 @@ class VideoJob(models.Model):
     )
 
     # ── コンテンツ設定 ───────────────────────────────────────
-    prompt_text = models.TextField(blank=True)
+    prompt = models.ForeignKey(
+        'Prompt',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='video_jobs',
+    )
     video_ai_config_id = models.IntegerField(
         null=True, blank=True,
         help_text='video_ai.UserVideoAiConfig の id',
     )
+    publish_mode = models.CharField(max_length=20, default='private')
 
     # ── YouTube 連携 ─────────────────────────────────────────
     google_account = models.ForeignKey(

@@ -114,9 +114,6 @@ class YoutubePublishWorkflow:
             FetchPublishSettingsInput(
                 job_id=input.job_id,
                 user_id=input.user_id,
-                title_override=input.title,
-                description_override=input.description,
-                tags_override=input.tags,
                 publish_mode_override=input.publish_mode,
             ),
             start_to_close_timeout=timedelta(minutes=2),

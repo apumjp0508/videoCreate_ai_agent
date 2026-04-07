@@ -24,6 +24,16 @@ class ContentSelectForm(forms.Form):
         required=False,
     )
 
+    publish_mode = forms.ChoiceField(
+        label='公開設定',
+        choices=[
+            ('private',  '非公開'),
+            ('unlisted', '限定公開'),
+            ('public',   '公開'),
+        ],
+        initial='private',
+    )
+
     def __init__(self, *args, image_choices=None, audio_choices=None, **kwargs):
         super().__init__(*args, **kwargs)
         if image_choices is not None:

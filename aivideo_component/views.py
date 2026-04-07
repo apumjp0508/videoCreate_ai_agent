@@ -70,9 +70,10 @@ class ContentSelectView(View):
         if form.is_valid():
             # 選択内容をセッションに保存して AI プロバイダー選択画面へ渡す
             request.session[_CONTENT_SELECTION_SESSION_KEY] = {
-                'script':   form.cleaned_data['script'],
-                'image_id': form.cleaned_data.get('image') or None,
-                'audio_id': form.cleaned_data.get('audio') or None,
+                'script':       form.cleaned_data['script'],
+                'image_id':     form.cleaned_data.get('image') or None,
+                'audio_id':     form.cleaned_data.get('audio') or None,
+                'publish_mode': form.cleaned_data['publish_mode'],
             }
             return redirect('aivideo_component:provider_select', channel_id=channel_id)
         ctx['form'] = form
@@ -425,6 +426,7 @@ class AIProviderSelectView(View):
                 script=selection.get('script', ''),
                 image_id=int(selection['image_id']) if selection.get('image_id') else None,
                 audio_id=int(selection['audio_id']) if selection.get('audio_id') else None,
+                publish_mode=selection.get('publish_mode', 'private'),
             )
         except VideoAiConfigNotFoundError as exc:
             messages.error(request, str(exc))

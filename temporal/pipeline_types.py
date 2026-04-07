@@ -40,11 +40,9 @@ class PipelineInput:
     youtube_channel_id: str = ""
 
     # 投稿設定
+    # title / description / tags / thumbnail_url は YoutubePublishWorkflow 内の
+    # fetch_publish_settings Activity が DB から取得するため、ここでは渡さない
     publish_mode: str = "private"           # "private" | "unlisted" | "public"
-    thumbnail_url: str = ""
-    title: str = ""
-    description: str = ""
-    tags: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -91,10 +89,7 @@ class YoutubePublishWorkflowInput:
     oauth_record_id: int
     youtube_channel_id: str
     publish_mode: str = "private"
-    thumbnail_url: str = ""
-    title: str = ""
-    description: str = ""
-    tags: list[str] = field(default_factory=list)
+    # title / description / tags / thumbnail_url は fetch_publish_settings Activity が取得する
 
 
 @dataclass
