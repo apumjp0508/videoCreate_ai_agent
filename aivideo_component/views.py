@@ -389,7 +389,33 @@ class AIProviderSelectView(View):
                 'models':        models,
                 'status':        None,
                 'message':       None,
+                'errors':        [],
+                'warnings':      [],
             })
+
+        # ── コンテンツ選択済みなら事前バリデーション ─────────────────
+        # ページロード時に各プロバイダーの適合状態を先読みして表示する。
+        # 失敗しても画面は壊さない（try/except で無視）。
+        selection = request.session.get(_CONTENT_SELECTION_SESSION_KEY, {})
+        if selection:
+            for p in provider_data:
+                try:
+                    validation_input = self._build_validation_input(p['id'], selection)
+                    result = validate_content(validation_input)
+                    if result.is_unsupported:
+                        p['status'] = 'unavailable'
+                        p['errors'] = [e.message for e in result.errors]
+                    elif not result.is_valid:
+                        p['status'] = 'unavailable'
+                        p['errors']   = [e.message for e in result.errors]
+                        p['warnings'] = [w.message for w in result.warnings]
+                    elif result.warnings:
+                        p['status'] = 'caution'
+                        p['warnings'] = [w.message for w in result.warnings]
+                    else:
+                        p['status'] = 'ok'
+                except Exception:
+                    pass  # 事前バリデーション失敗は無視して表示を継続
 
         return provider_data
 

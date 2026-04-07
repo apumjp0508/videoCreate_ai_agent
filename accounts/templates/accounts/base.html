@@ -6,21 +6,34 @@
 </head>
 <body>
     {% if messages %}
-      <div id="django-messages" style="position:fixed;top:70px;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:0.5rem;max-width:360px;">
+      <div id="django-messages" style="position:fixed;top:70px;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:0.5rem;max-width:400px;">
         {% for message in messages %}
-          <div style="padding:0.75rem 1.1rem;border-radius:10px;font-size:0.84rem;font-weight:600;
-            {% if message.tags == 'success' %}background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.35);color:#4ade80;
-            {% elif message.tags == 'error' %}background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.35);color:#f87171;
-            {% else %}background:rgba(99,55,255,0.15);border:1px solid rgba(99,55,255,0.35);color:#a78bfa;{% endif %}">
-            {{ message }}
+          <div class="toast-msg {% if message.tags == 'success' %}toast-success{% elif message.tags == 'error' %}toast-error{% elif message.tags == 'warning' %}toast-warning{% else %}toast-info{% endif %}"
+               style="padding:0.75rem 1rem 0.75rem 1.1rem;border-radius:10px;font-size:0.84rem;font-weight:500;
+                      display:flex;align-items:flex-start;gap:0.75rem;line-height:1.5;
+                      {% if message.tags == 'success' %}background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#4ade80;
+                      {% elif message.tags == 'error' %}background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#f87171;
+                      {% elif message.tags == 'warning' %}background:rgba(250,204,21,0.10);border:1px solid rgba(250,204,21,0.3);color:#fde047;
+                      {% else %}background:rgba(99,55,255,0.12);border:1px solid rgba(99,55,255,0.3);color:#a78bfa;{% endif %}">
+            <span style="flex-shrink:0;font-size:1rem;margin-top:0.05rem;">
+              {% if message.tags == 'success' %}✓{% elif message.tags == 'error' %}✕{% elif message.tags == 'warning' %}⚠{% else %}ℹ{% endif %}
+            </span>
+            <span style="flex:1;">{{ message }}</span>
+            <button onclick="this.closest('.toast-msg').remove();"
+                    style="flex-shrink:0;background:none;border:none;cursor:pointer;font-size:1rem;opacity:0.5;line-height:1;padding:0;color:inherit;"
+                    aria-label="閉じる">✕</button>
           </div>
         {% endfor %}
       </div>
       <script>
-        setTimeout(function(){
-          var el = document.getElementById('django-messages');
-          if(el){ el.style.transition='opacity 0.5s'; el.style.opacity='0'; setTimeout(function(){el.remove();},500); }
-        }, 3000);
+        // success / info は 5 秒後に自動消去、error / warning はユーザーが手動で閉じる
+        document.querySelectorAll('.toast-success, .toast-info').forEach(function(el){
+          setTimeout(function(){
+            el.style.transition='opacity 0.4s';
+            el.style.opacity='0';
+            setTimeout(function(){ el.remove(); }, 400);
+          }, 5000);
+        });
       </script>
     {% endif %}
     {% block content %}{% endblock %}

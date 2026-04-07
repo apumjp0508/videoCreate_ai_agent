@@ -80,6 +80,10 @@ class ContentValidationResult:
     is_valid: bool
     errors: list[ValidationIssue] = field(default_factory=list)
     warnings: list[ValidationIssue] = field(default_factory=list)
+    # 以下は service / validator が設定する付加情報（デフォルトは空）
+    provider_key: str = ""          # "runway" | "pika" | "kling" など
+    asset_type: str = ""            # "image" | "audio" | ""
+    is_unsupported: bool = False    # True = このプロバイダーはこのアセット種別に未対応
 
     def add_error(self, field: str, message: str) -> None:
         self.errors.append(ValidationIssue(field=field, message=message))

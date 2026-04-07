@@ -108,6 +108,12 @@
     transition: border-color 0.2s;
   }
   .item-row:hover { border-color: rgba(255,255,255,0.13); }
+
+  /* バリデーション状態でボーダー色を変える */
+  .item-row[data-vstatus="valid"]   { border-color: rgba(74,222,128,0.2); }
+  .item-row[data-vstatus="invalid"] { border-color: rgba(248,113,113,0.25); }
+  .item-row[data-vstatus="warning"] { border-color: rgba(250,204,21,0.2); }
+
   .item-icon {
     width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
@@ -116,12 +122,26 @@
   .item-icon.img-icon { background: rgba(99,55,255,0.15); }
   .item-icon.aud-icon { background: rgba(0,200,255,0.12); }
   .item-info { flex: 1; min-width: 0; }
+  .item-title-row {
+    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  }
   .item-title {
     font-size: 0.88rem; font-weight: 600; color: #e2e8f0;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .item-meta { font-size: 0.72rem; color: #64748b; margin-top: 0.15rem; }
+  .item-meta { font-size: 0.72rem; color: #64748b; margin-top: 0.2rem; }
   .item-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+
+  /* バリデーションバッジ */
+  .vstatus-badge {
+    display: inline-flex; align-items: center; gap: 0.25rem;
+    font-size: 0.65rem; font-weight: 700; padding: 0.1rem 0.45rem;
+    border-radius: 999px; flex-shrink: 0; white-space: nowrap;
+  }
+  .vstatus-valid   { background: rgba(74,222,128,0.12); color: #4ade80; border: 1px solid rgba(74,222,128,0.25); }
+  .vstatus-invalid { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.25); }
+  .vstatus-warning { background: rgba(250,204,21,0.10); color: #fde047; border: 1px solid rgba(250,204,21,0.25); }
+  .vstatus-pending { background: rgba(148,163,184,0.08); color: #64748b; border: 1px solid rgba(148,163,184,0.18); }
   .btn-edit {
     font-size: 0.75rem; font-weight: 600; padding: 0.3rem 0.7rem;
     color: #38bdf8; background: rgba(56,189,248,0.08);
@@ -287,11 +307,37 @@
     {% if images %}
       <div class="item-list">
         {% for img in images %}
-          <div class="item-row">
+          <div class="item-row" data-vstatus="{{ img.validation_status }}">
             <div class="item-icon img-icon">🖼</div>
             <div class="item-info">
-              <div class="item-title">{{ img.title }}</div>
-              <div class="item-meta">{{ img.file.name }} · {{ img.created_at|date:"Y/m/d H:i" }}</div>
+              <div class="item-title-row">
+                <span class="item-title">{{ img.title }}</span>
+                {% if img.validation_status == 'valid' %}
+                  <span class="vstatus-badge vstatus-valid">✓ 使用可能</span>
+                {% elif img.validation_status == 'invalid' %}
+                  <span class="vstatus-badge vstatus-invalid">✕ 使用不可</span>
+                {% elif img.validation_status == 'warning' %}
+                  <span class="vstatus-badge vstatus-warning">⚠ 要確認</span>
+                {% else %}
+                  <span class="vstatus-badge vstatus-pending">― 未検証</span>
+                {% endif %}
+              </div>
+              <div class="item-meta">
+                {% if img.mime_type %}{{ img.mime_type }} · {% endif %}
+                {% if img.width and img.height %}{{ img.width }}×{{ img.height }}px · {% endif %}
+                {% if img.file_size_bytes %}{{ img.file_size_bytes|filesizeformat }} · {% endif %}
+                {% if img.aspect_ratio %}{{ img.aspect_ratio }} · {% endif %}
+                {{ img.created_at|date:"Y/m/d H:i" }}
+              </div>
+              {% if img.validation_status == 'invalid' and img.validation_message %}
+                <div style="font-size:0.7rem;color:#f87171;margin-top:0.2rem;line-height:1.5;">
+                  {{ img.validation_message|truncatechars:120 }}
+                </div>
+              {% elif img.validation_status == 'warning' and img.validation_message %}
+                <div style="font-size:0.7rem;color:#fde047;margin-top:0.2rem;line-height:1.5;">
+                  {{ img.validation_message|truncatechars:120 }}
+                </div>
+              {% endif %}
             </div>
             <div class="item-actions">
               <a href="{% url 'aivideo_component:image_edit' channel_id=channel_id pk=img.pk %}" class="btn-edit">編集</a>
@@ -322,11 +368,38 @@
     {% if audios %}
       <div class="item-list">
         {% for aud in audios %}
-          <div class="item-row">
+          <div class="item-row" data-vstatus="{{ aud.validation_status }}">
             <div class="item-icon aud-icon">🎵</div>
             <div class="item-info">
-              <div class="item-title">{{ aud.title }}</div>
-              <div class="item-meta">{{ aud.file.name }} · {{ aud.created_at|date:"Y/m/d H:i" }}</div>
+              <div class="item-title-row">
+                <span class="item-title">{{ aud.title }}</span>
+                {% if aud.validation_status == 'valid' %}
+                  <span class="vstatus-badge vstatus-valid">✓ 使用可能</span>
+                {% elif aud.validation_status == 'invalid' %}
+                  <span class="vstatus-badge vstatus-invalid">✕ 使用不可</span>
+                {% elif aud.validation_status == 'warning' %}
+                  <span class="vstatus-badge vstatus-warning">⚠ 要確認</span>
+                {% else %}
+                  <span class="vstatus-badge vstatus-pending">― 未検証</span>
+                {% endif %}
+              </div>
+              <div class="item-meta">
+                {% if aud.mime_type %}{{ aud.mime_type }} · {% endif %}
+                {% if aud.duration_sec %}{{ aud.duration_sec|floatformat:1 }}秒 · {% endif %}
+                {% if aud.sample_rate %}{{ aud.sample_rate }}Hz · {% endif %}
+                {% if aud.channels %}{{ aud.channels }}ch · {% endif %}
+                {% if aud.file_size_bytes %}{{ aud.file_size_bytes|filesizeformat }} · {% endif %}
+                {{ aud.created_at|date:"Y/m/d H:i" }}
+              </div>
+              {% if aud.validation_status == 'invalid' and aud.validation_message %}
+                <div style="font-size:0.7rem;color:#f87171;margin-top:0.2rem;line-height:1.5;">
+                  {{ aud.validation_message|truncatechars:120 }}
+                </div>
+              {% elif aud.validation_status == 'warning' and aud.validation_message %}
+                <div style="font-size:0.7rem;color:#fde047;margin-top:0.2rem;line-height:1.5;">
+                  {{ aud.validation_message|truncatechars:120 }}
+                </div>
+              {% endif %}
             </div>
             <div class="item-actions">
               <a href="{% url 'aivideo_component:audio_edit' channel_id=channel_id pk=aud.pk %}" class="btn-edit">編集</a>

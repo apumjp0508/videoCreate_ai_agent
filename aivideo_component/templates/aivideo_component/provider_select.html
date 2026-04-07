@@ -85,49 +85,143 @@
   }
 
   /* ===== Provider card list ===== */
-  /*
-   * 将来: provider に status（'ok' / 'caution' / 'unavailable'）が付いたとき、
-   * .provider-card に data-status 属性を追加して背景・ボーダー色を変えられる構造にしている。
-   */
   .provider-list {
     display: flex; flex-direction: column; gap: 0.75rem;
     margin-bottom: 2rem;
   }
+
+  /* ベースカード */
   .provider-card {
-    display: flex; align-items: center; gap: 1rem;
+    display: block;
     background: rgba(255,255,255,0.03);
     border: 1px solid rgba(255,255,255,0.09);
-    border-radius: 12px; padding: 1rem 1.25rem;
-    cursor: pointer; transition: border-color 0.2s, background 0.2s;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
     position: relative;
+    overflow: hidden;
   }
   .provider-card:hover {
     border-color: rgba(99,55,255,0.4);
-    background: rgba(99,55,255,0.05);
-  }
-  /* ラジオボタンを選択したときにカードをハイライト */
-  .provider-card input[type="radio"]:checked ~ .provider-info .provider-name {
-    color: #a78bfa;
+    background: rgba(99,55,255,0.04);
   }
 
-  .provider-radio { accent-color: #6337ff; width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; }
-  .provider-info { flex: 1; }
-  .provider-name { font-size: 0.95rem; font-weight: 700; color: #e2e8f0; }
+  /* ステータス別スタイル */
+  .provider-card[data-status="ok"] {
+    border-color: rgba(74,222,128,0.25);
+  }
+  .provider-card[data-status="ok"]:hover {
+    border-color: rgba(74,222,128,0.5);
+    background: rgba(74,222,128,0.03);
+  }
+  .provider-card[data-status="caution"] {
+    border-color: rgba(250,204,21,0.3);
+  }
+  .provider-card[data-status="caution"]:hover {
+    border-color: rgba(250,204,21,0.5);
+    background: rgba(250,204,21,0.03);
+  }
+  .provider-card[data-status="unavailable"] {
+    border-color: rgba(248,113,113,0.3);
+    opacity: 0.8;
+  }
+  .provider-card[data-status="unavailable"]:hover {
+    border-color: rgba(248,113,113,0.5);
+    background: rgba(248,113,113,0.03);
+    opacity: 1;
+  }
 
-  /*
-   * 将来の適合判定バッジ用スタイル。
-   * status が渡ってきたときに表示する。現時点は非表示。
-   * 'ok'        → .status-ok       (緑)
-   * 'caution'   → .status-caution  (黄)
-   * 'unavailable' → .status-unavailable (赤)
-   */
-  .provider-status { font-size: 0.75rem; font-weight: 600; margin-top: 0.25rem; }
-  .status-ok         { color: #4ade80; }
-  .status-caution    { color: #facc15; }
-  .status-unavailable { color: #f87171; }
+  /* 選択中ハイライト */
+  .provider-card.is-selected {
+    box-shadow: 0 0 0 2px rgba(99,55,255,0.5);
+    border-color: rgba(99,55,255,0.6) !important;
+    background: rgba(99,55,255,0.06) !important;
+  }
+  .provider-card[data-status="unavailable"].is-selected {
+    box-shadow: 0 0 0 2px rgba(248,113,113,0.5);
+    border-color: rgba(248,113,113,0.6) !important;
+  }
 
-  /* ===== Error ===== */
+  /* カード内部レイアウト */
+  .provider-card-main {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 1rem 1.25rem;
+  }
+  .provider-radio {
+    accent-color: #6337ff; width: 18px; height: 18px;
+    flex-shrink: 0; cursor: pointer;
+  }
+  .provider-info { flex: 1; min-width: 0; }
+  .provider-name {
+    font-size: 0.95rem; font-weight: 700; color: #e2e8f0;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+
+  /* ステータスバッジ */
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.55rem;
+    border-radius: 999px; flex-shrink: 0;
+  }
+  .badge-ok       { background: rgba(74,222,128,0.15);  color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
+  .badge-caution  { background: rgba(250,204,21,0.12);  color: #fde047; border: 1px solid rgba(250,204,21,0.3); }
+  .badge-unavailable { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+  .badge-pending  { background: rgba(148,163,184,0.1);  color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
+
+  /* エラー/警告の展開パネル */
+  .provider-issues {
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding: 0 1.25rem 0.875rem;
+  }
+  .issues-toggle {
+    background: none; border: none; cursor: pointer;
+    font-size: 0.75rem; font-weight: 600; padding: 0.5rem 0;
+    display: flex; align-items: center; gap: 0.35rem;
+    width: 100%; text-align: left;
+  }
+  .issues-toggle .toggle-icon { transition: transform 0.2s; display: inline-block; }
+  .issues-toggle[aria-expanded="true"] .toggle-icon { transform: rotate(90deg); }
+  .issues-list {
+    list-style: none; display: flex; flex-direction: column; gap: 0.35rem;
+    margin-top: 0.25rem;
+  }
+  .issue-item {
+    font-size: 0.78rem; line-height: 1.55;
+    padding: 0.4rem 0.7rem; border-radius: 7px;
+    display: flex; align-items: flex-start; gap: 0.5rem;
+  }
+  .issue-error   { background: rgba(248,113,113,0.08); color: #fca5a5; }
+  .issue-warning { background: rgba(250,204,21,0.07);  color: #fde68a; }
+  .issue-icon { flex-shrink: 0; font-size: 0.8rem; margin-top: 0.05rem; }
+
+  /* ===== 選択中プロバイダーが unavailable のとき出る警告バナー ===== */
+  .submit-warning {
+    display: none;
+    background: rgba(248,113,113,0.10);
+    border: 1px solid rgba(248,113,113,0.3);
+    border-radius: 10px; padding: 0.75rem 1rem;
+    font-size: 0.82rem; color: #fca5a5; line-height: 1.55;
+    margin-bottom: 1rem;
+  }
+  .submit-warning.is-visible { display: flex; gap: 0.6rem; align-items: flex-start; }
+
+  /* ===== Error (form) ===== */
   .field-errors { margin-top: 0.5rem; font-size: 0.78rem; color: #f87171; }
+
+  /* ===== モデル選択セクション ===== */
+  .model-select-wrap { margin-bottom: 1.5rem; }
+  .model-select-label {
+    display: block; font-size: 0.83rem; font-weight: 600;
+    color: #cbd5e1; margin-bottom: 0.5rem;
+  }
+  .model-select {
+    width: 100%; padding: 0.7rem 1rem;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px; color: #e2e8f0; font-size: 0.88rem; font-family: inherit;
+    appearance: none; cursor: pointer; outline: none;
+    transition: border-color 0.2s;
+  }
+  .model-select:focus { border-color: rgba(99,55,255,0.5); }
 
   /* ===== Buttons ===== */
   .form-actions {
@@ -196,65 +290,99 @@
   <h1 class="page-title">生成AIを選択してください</h1>
   <p class="page-sub">
     動画の生成に使う AI プロバイダを選んでください。<br>
-    選択した画像・音声に対応したプロバイダを使用します。
+    バッジは選択済みコンテンツとの事前適合チェック結果です。
   </p>
 
   <!-- ===== フォーム ===== -->
   <div class="form-card">
     <p class="form-section-title">プロバイダを選択</p>
 
-    <form method="post">
+    <form method="post" id="provider-form">
       {% csrf_token %}
 
-      <!--
-        provider カード一覧。
-        将来 view 側で status / message を付与すれば、
-        data-status 属性と .status-* クラスで適合判定を表示できる。
-      -->
-      <!-- プロバイダー選択 -->
-      <div class="provider-list">
+      <!-- プロバイダーカード一覧 -->
+      <div class="provider-list" id="provider-list">
         {% for provider in providers %}
-          <label class="provider-card" for="provider_{{ provider.id }}">
-            <input
-              class="provider-radio"
-              type="radio"
-              id="provider_{{ provider.id }}"
-              name="provider"
-              value="{{ provider.id }}"
-              data-provider="{{ provider.id }}"
-              {% if form.provider.value == provider.id %}checked{% endif %}
-            >
-            <div class="provider-info">
-              <div class="provider-name">{{ provider.name }}</div>
-              {% if provider.status == 'ok' %}
-                <div class="provider-status status-ok">使用可能</div>
-              {% elif provider.status == 'caution' %}
-                <div class="provider-status status-caution">要確認</div>
-              {% elif provider.status == 'unavailable' %}
-                <div class="provider-status status-unavailable">使用不可</div>
-              {% endif %}
-              {% if provider.message %}
-                <div class="provider-status" style="color:#64748b;">{{ provider.message }}</div>
-              {% endif %}
-            </div>
-          </label>
+          <div
+            class="provider-card"
+            data-provider-id="{{ provider.id }}"
+            data-status="{{ provider.status|default:'' }}"
+            id="card-{{ provider.id }}"
+          >
+            <!-- メイン行 -->
+            <label class="provider-card-main" for="provider_{{ provider.id }}" style="cursor:pointer;">
+              <input
+                class="provider-radio"
+                type="radio"
+                id="provider_{{ provider.id }}"
+                name="provider"
+                value="{{ provider.id }}"
+                data-provider="{{ provider.id }}"
+                {% if form.provider.value == provider.id %}checked{% endif %}
+              >
+              <div class="provider-info">
+                <div class="provider-name">
+                  {{ provider.name }}
+                  {% if provider.status == 'ok' %}
+                    <span class="status-badge badge-ok">✓ 使用可能</span>
+                  {% elif provider.status == 'caution' %}
+                    <span class="status-badge badge-caution">⚠ 要確認</span>
+                  {% elif provider.status == 'unavailable' %}
+                    <span class="status-badge badge-unavailable">✕ 使用不可</span>
+                  {% else %}
+                    <span class="status-badge badge-pending">― 未チェック</span>
+                  {% endif %}
+                </div>
+              </div>
+            </label>
+
+            <!-- エラー/警告の展開パネル -->
+            {% if provider.errors or provider.warnings %}
+              <div class="provider-issues">
+                <button type="button" class="issues-toggle"
+                        aria-expanded="false"
+                        aria-controls="issues-{{ provider.id }}"
+                        onclick="toggleIssues(this)">
+                  <span class="toggle-icon">›</span>
+                  {% if provider.errors %}
+                    <span style="color:#f87171;">エラー {{ provider.errors|length }}件</span>
+                  {% endif %}
+                  {% if provider.warnings %}
+                    <span style="color:#fde047;">警告 {{ provider.warnings|length }}件</span>
+                  {% endif %}
+                  <span style="color:#64748b;">（詳細を見る）</span>
+                </button>
+                <div id="issues-{{ provider.id }}" hidden>
+                  <ul class="issues-list">
+                    {% for err in provider.errors %}
+                      <li class="issue-item issue-error">
+                        <span class="issue-icon">✕</span>
+                        <span>{{ err }}</span>
+                      </li>
+                    {% endfor %}
+                    {% for warn in provider.warnings %}
+                      <li class="issue-item issue-warning">
+                        <span class="issue-icon">⚠</span>
+                        <span>{{ warn }}</span>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              </div>
+            {% endif %}
+
+          </div>
         {% endfor %}
       </div>
+
       {% if form.provider.errors %}
         <div class="field-errors">{{ form.provider.errors }}</div>
       {% endif %}
 
       <!-- モデル選択 -->
-      <div style="margin-bottom: 1.5rem;">
-        <label style="display:block; font-size:0.83rem; font-weight:600; color:#cbd5e1; margin-bottom:0.5rem;">
-          モデル
-        </label>
-        <select name="model_id" id="model_id" style="
-          width:100%; padding:0.7rem 1rem;
-          background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1);
-          border-radius:10px; color:#e2e8f0; font-size:0.88rem; font-family:inherit;
-          appearance:none; cursor:pointer; outline:none;
-        ">
+      <div class="model-select-wrap">
+        <label class="model-select-label" for="model_id">モデル</label>
+        <select name="model_id" id="model_id" class="model-select">
           <option value="">── プロバイダーを選択するとモデルが表示されます ──</option>
           {% for provider in providers %}
             {% for model in provider.models %}
@@ -271,12 +399,21 @@
         {% endif %}
       </div>
 
+      <!-- unavailable 選択時の警告バナー -->
+      <div class="submit-warning" id="unavailable-warning" role="alert">
+        <span style="flex-shrink:0;font-size:1.1rem;">⚠</span>
+        <span>
+          選択中のプロバイダーは現在のコンテンツに<strong>使用できない可能性</strong>があります。
+          上の詳細を確認して別のプロバイダーに変更するか、このまま送信して確認することもできます。
+        </span>
+      </div>
+
       <!-- ボタン -->
       <div class="form-actions">
         <a href="{% url 'aivideo_component:content_select' channel_id=channel_id %}" class="btn-back">
           ← コンテンツ選択に戻る
         </a>
-        <button type="submit" class="btn-primary">この AI で生成する →</button>
+        <button type="submit" class="btn-primary" id="submit-btn">この AI で生成する →</button>
       </div>
 
     </form>
@@ -286,6 +423,8 @@
 
 <script>
   (function () {
+
+    // ── モデルの絞り込み ──────────────────────────────────────────
     function filterModels() {
       const checked = document.querySelector('input[name="provider"]:checked');
       const selectedProvider = checked ? checked.value : '';
@@ -299,17 +438,65 @@
         if (match && !firstVisible) firstVisible = opt;
       });
 
-      // 選択中のオプションが非表示になったらリセット
       if (select.selectedOptions[0] && select.selectedOptions[0].hidden) {
         select.value = firstVisible ? firstVisible.value : '';
       }
     }
 
-    document.querySelectorAll('input[name="provider"]').forEach(radio => {
-      radio.addEventListener('change', filterModels);
+    // ── 選択状態の反映（ハイライト + 警告バナー）──────────────────
+    function updateSelection() {
+      const checked = document.querySelector('input[name="provider"]:checked');
+      const selectedProvider = checked ? checked.value : null;
+      const warning = document.getElementById('unavailable-warning');
+
+      document.querySelectorAll('.provider-card').forEach(card => {
+        const isSelected = card.dataset.providerId === selectedProvider;
+        card.classList.toggle('is-selected', isSelected);
+      });
+
+      // unavailable なプロバイダーが選択されたとき警告バナーを表示
+      if (selectedProvider) {
+        const selectedCard = document.getElementById('card-' + selectedProvider);
+        const isUnavailable = selectedCard && selectedCard.dataset.status === 'unavailable';
+        warning.classList.toggle('is-visible', isUnavailable);
+      } else {
+        warning.classList.remove('is-visible');
+      }
+
+      filterModels();
+    }
+
+    // ── 詳細の展開/折りたたみ ────────────────────────────────────
+    window.toggleIssues = function(btn) {
+      const targetId = btn.getAttribute('aria-controls');
+      const target = document.getElementById(targetId);
+      const expanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', !expanded);
+      target.hidden = expanded;
+      btn.querySelector('.toggle-icon').style.transform = expanded ? '' : 'rotate(90deg)';
+    };
+
+    // ── カード全体をクリックでラジオ選択 ────────────────────────
+    // 外側の div はラベルではないため、クリックハンドラで補完する。
+    // .provider-issues（展開パネル）内のクリックはラジオ選択に影響させない。
+    document.querySelectorAll('.provider-card').forEach(function(card) {
+      card.addEventListener('click', function(e) {
+        if (e.target.closest('.provider-issues')) return;
+        var radio = card.querySelector('input[type="radio"]');
+        if (radio) {
+          radio.checked = true;
+          updateSelection();
+        }
+      });
     });
 
-    filterModels();
+    // ── ラジオの change イベントでも同期 ────────────────────────
+    // label クリック経由で change が発火した場合にも確実に反映する。
+    document.querySelectorAll('input[name="provider"]').forEach(radio => {
+      radio.addEventListener('change', updateSelection);
+    });
+
+    updateSelection(); // ページロード時に状態を反映
   })();
 </script>
 {% endblock %}
