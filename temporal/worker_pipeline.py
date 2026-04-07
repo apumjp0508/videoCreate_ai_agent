@@ -80,12 +80,21 @@ from temporal.activities.video_generation.django_service import (  # noqa: E402
 vg_dummy._service = DjangoVideoGenerationService()
 
 # ─────────────────────────────────────────────────────────────
-# video_metadata / thumbnail_generation: Dummy のまま（AI プロバイダー固有）
+# video_metadata: OpenAI 実装に差し替え（Whisper + GPT）
 # ─────────────────────────────────────────────────────────────
+from temporal.activities.video_metadata import dummy as vm_dummy  # noqa: E402
 from temporal.activities.video_metadata.dummy import (  # noqa: E402
     dummy_analyze_video_content,
     dummy_generate_video_metadata,
 )
+from temporal.activities.video_metadata.openai_service import (  # noqa: E402
+    OpenAIVideoMetadataService,
+)
+vm_dummy._service = OpenAIVideoMetadataService()
+
+# ─────────────────────────────────────────────────────────────
+# thumbnail_generation: Dummy のまま（AI プロバイダー固有）
+# ─────────────────────────────────────────────────────────────
 from temporal.activities.thumbnail_generation.dummy import (  # noqa: E402
     dummy_generate_thumbnail,
 )
