@@ -31,6 +31,39 @@ from temporalio import activity
 # ─────────────────────────────────────────────────────────────
 
 @dataclass
+class ImageMaterial:
+    """
+    画像素材の詳細情報。
+    GeneratedImage モデルのフィールドに対応する。
+    """
+    id: int
+    title: str
+    file_url: str           # Django storage URL（例: /media/images/xxx.jpg）
+    mime_type: str = ""
+    width: int = 0
+    height: int = 0
+    aspect_ratio: str = ""  # 例: "16:9", "1:1", "9:16"
+    file_size_bytes: int = 0
+
+
+@dataclass
+class AudioMaterial:
+    """
+    音声素材の詳細情報。
+    GeneratedAudio モデルのフィールドに対応する。
+    """
+    id: int
+    title: str
+    file_url: str           # Django storage URL（例: /media/audios/xxx.mp3）
+    mime_type: str = ""
+    duration_sec: float = 0.0
+    sample_rate: int = 0
+    channels: int = 0       # 1=モノラル, 2=ステレオ
+    codec: str = ""         # 例: "mp3", "aac", "wav"
+    file_size_bytes: int = 0
+
+
+@dataclass
 class FetchMaterialsInput:
     job_id: str
     user_id: int
@@ -40,10 +73,11 @@ class FetchMaterialsInput:
 
 @dataclass
 class FetchMaterialsOutput:
-    """取得した素材メタデータ。実装時は URL / ファイルパスなどを付与する。"""
+    """取得した素材データ。images / audios に詳細情報が入る。"""
     image_ids: list[int] = field(default_factory=list)
     audio_ids: list[int] = field(default_factory=list)
-    # TODO: 本実装では各素材の URL / メタデータを追加する
+    images: list[ImageMaterial] = field(default_factory=list)
+    audios: list[AudioMaterial] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -69,7 +103,9 @@ class FetchAiConfigOutput:
     config_id: int
     model_name: str
     api_endpoint: str
-    # TODO: 本実装では API キーや追加パラメータを追加する
+    # credential_id は submit_ai_request が DB から API キーを安全に取得するために使う
+    # Temporal ヒストリに API キー本体は含めない
+    credential_id: int = 0
     params: dict[str, Any] = field(default_factory=dict)
 
 
@@ -138,6 +174,8 @@ async def build_ai_request(input: BuildAiRequestInput) -> BuildAiRequestOutput:
 class SubmitAiRequestInput:
     job_id: str
     api_endpoint: str
+    # API キーは Temporal ヒストリに含めず、Activity 内で credential_id から DB 取得する
+    credential_id: int = 0
     ai_request_payload: dict[str, Any] = field(default_factory=dict)
 
 

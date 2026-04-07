@@ -10,35 +10,40 @@ VideoPipelineWorkflow 用 Worker エントリポイント。
     - VideoGenerationWorkflow   (子)
     - YoutubePublishWorkflow    (子)
 
-  Activities  ─ video_generation:
-    - dummy_fetch_materials
-    - dummy_fetch_ai_config
-    - dummy_fetch_request_definition
-    - dummy_build_ai_request
-    - dummy_submit_ai_request
-    - dummy_poll_generation_status
-    - dummy_fetch_generated_video
+  Activities  ─ video_generation（DjangoVideoGenerationService）:
+    - fetch_materials          ← Django ORM
+    - fetch_ai_config          ← Django ORM
+    - fetch_request_definition ← Django ORM
+    - build_ai_request         ← 純粋ロジック
+    - submit_ai_request        ← Dummy（AIプロバイダー固有: 差し替え必要）
+    - poll_generation_status   ← Dummy（AIプロバイダー固有: 差し替え必要）
+    - fetch_generated_video    ← Dummy（AIプロバイダー固有: 差し替え必要）
 
-  Activities  ─ youtube_publish:
-    - dummy_fetch_youtube_account
-    - dummy_fetch_oauth_token
-    - dummy_refresh_access_token
-    - dummy_fetch_publish_settings
-    - dummy_build_upload_request
-    - dummy_upload_video_to_youtube
-    - dummy_set_thumbnail
-    - dummy_apply_publish_settings
-    - dummy_save_publish_result
+  Activities  ─ video_metadata（Dummy: AI プロバイダー固有）:
+    - analyze_video_content    ← Dummy（差し替え必要）
+    - generate_video_metadata  ← Dummy（差し替え必要）
+
+  Activities  ─ thumbnail_generation（Dummy: AI プロバイダー固有）:
+    - generate_thumbnail       ← Dummy（差し替え必要）
+
+  Activities  ─ youtube_publish（DjangoYoutubePublishService + YoutubeDataApiService）:
+    - fetch_youtube_account    ← Django ORM
+    - fetch_oauth_token        ← Django ORM + Fernet 復号
+    - refresh_access_token     ← Google OAuth API + DB 更新
+    - fetch_publish_settings   ← Django ORM + AI 生成オーバーライド
+    - build_upload_request     ← 純粋ロジック
+    - upload_video_to_youtube  ← YouTube Data API v3
+    - set_thumbnail            ← YouTube Data API v3
+    - apply_publish_settings   ← YouTube Data API v3
+    - save_publish_result      ← Django ORM
 
 サービス差し替え方法:
-  本番実装に切り替えるには、各 dummy.py の _service = の行を
-  本番サービスクラスのインスタンスに変更するか、
-  このファイルで dummy モジュールの _service を上書きする。
+  AIプロバイダー固有の Activity は dummy モジュールの _service を上書きする。
 
-  例:
+  例（Runway 実装に差し替える場合）:
     from temporal.activities.video_generation import dummy as vg_dummy
-    from myapp.services.video_generation import RealVideoGenerationService
-    vg_dummy._service = RealVideoGenerationService()
+    from myapp.services.runway import RunwayVideoGenerationService
+    vg_dummy._service = RunwayVideoGenerationService()
 """
 import asyncio
 import logging
@@ -53,7 +58,10 @@ django.setup()
 from django.conf import settings  # noqa: E402
 from temporalio.worker import Worker  # noqa: E402
 
-# ── Activity 実装（ダミー） ───────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+# video_generation: ダミー Activity 関数のインポート
+# ─────────────────────────────────────────────────────────────
+from temporal.activities.video_generation import dummy as vg_dummy  # noqa: E402
 from temporal.activities.video_generation.dummy import (  # noqa: E402
     dummy_build_ai_request,
     dummy_fetch_ai_config,
@@ -63,6 +71,29 @@ from temporal.activities.video_generation.dummy import (  # noqa: E402
     dummy_poll_generation_status,
     dummy_submit_ai_request,
 )
+
+# DB操作・純粋ロジックを Django 実装に差し替える
+# （submit_ai_request / poll_generation_status / fetch_generated_video は AI プロバイダー固有のため Dummy のまま）
+from temporal.activities.video_generation.django_service import (  # noqa: E402
+    DjangoVideoGenerationService,
+)
+vg_dummy._service = DjangoVideoGenerationService()
+
+# ─────────────────────────────────────────────────────────────
+# video_metadata / thumbnail_generation: Dummy のまま（AI プロバイダー固有）
+# ─────────────────────────────────────────────────────────────
+from temporal.activities.video_metadata.dummy import (  # noqa: E402
+    dummy_analyze_video_content,
+    dummy_generate_video_metadata,
+)
+from temporal.activities.thumbnail_generation.dummy import (  # noqa: E402
+    dummy_generate_thumbnail,
+)
+
+# ─────────────────────────────────────────────────────────────
+# youtube_publish: ダミー Activity 関数のインポート
+# ─────────────────────────────────────────────────────────────
+from temporal.activities.youtube_publish import dummy as yt_dummy  # noqa: E402
 from temporal.activities.youtube_publish.dummy import (  # noqa: E402
     dummy_apply_publish_settings,
     dummy_build_upload_request,
@@ -75,7 +106,18 @@ from temporal.activities.youtube_publish.dummy import (  # noqa: E402
     dummy_upload_video_to_youtube,
 )
 
-# ── Workflow 登録 ─────────────────────────────────────────────
+# DB操作・YouTube API 呼び出しを Django 実装に差し替える
+from temporal.activities.youtube_publish.django_service import (  # noqa: E402
+    DjangoYoutubePublishService,
+)
+from temporal.activities.youtube_publish.youtube_api_service import (  # noqa: E402
+    YoutubeDataApiService,
+)
+yt_dummy._service = DjangoYoutubePublishService(youtube_api=YoutubeDataApiService())
+
+# ─────────────────────────────────────────────────────────────
+# Workflow 登録
+# ─────────────────────────────────────────────────────────────
 from temporal.client import get_temporal_client  # noqa: E402
 from temporal.workflows.pipeline.video_generation_workflow import VideoGenerationWorkflow  # noqa: E402
 from temporal.workflows.pipeline.video_pipeline_workflow import VideoPipelineWorkflow  # noqa: E402
@@ -85,8 +127,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────────────────────
-# Activity リスト
-# 追加・差し替えはここで行う
+# Activity リスト（追加・差し替えはここで行う）
 # ─────────────────────────────────────────────────────────────
 
 VIDEO_GENERATION_ACTIVITIES = [
@@ -94,9 +135,18 @@ VIDEO_GENERATION_ACTIVITIES = [
     dummy_fetch_ai_config,
     dummy_fetch_request_definition,
     dummy_build_ai_request,
-    dummy_submit_ai_request,
-    dummy_poll_generation_status,
-    dummy_fetch_generated_video,
+    dummy_submit_ai_request,        # Dummy: AIプロバイダー固有
+    dummy_poll_generation_status,   # Dummy: AIプロバイダー固有
+    dummy_fetch_generated_video,    # Dummy: AIプロバイダー固有
+]
+
+VIDEO_METADATA_ACTIVITIES = [
+    dummy_analyze_video_content,    # Dummy: AIプロバイダー固有
+    dummy_generate_video_metadata,  # Dummy: AIプロバイダー固有
+]
+
+THUMBNAIL_GENERATION_ACTIVITIES = [
+    dummy_generate_thumbnail,       # Dummy: AIプロバイダー固有
 ]
 
 YOUTUBE_PUBLISH_ACTIVITIES = [
@@ -125,6 +175,8 @@ async def main() -> None:
         ],
         activities=[
             *VIDEO_GENERATION_ACTIVITIES,
+            *VIDEO_METADATA_ACTIVITIES,
+            *THUMBNAIL_GENERATION_ACTIVITIES,
             *YOUTUBE_PUBLISH_ACTIVITIES,
         ],
     ):

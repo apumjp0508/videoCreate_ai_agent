@@ -90,6 +90,7 @@ class VideoPipelineWorkflow:
                 oauth_record_id=input.oauth_record_id,
                 youtube_channel_id=input.youtube_channel_id,
                 publish_mode=input.publish_mode,
+                prompt_id=input.prompt_id,
             ),
             id=f"{input.job_id}-yt-publish",
             task_queue=task_queue,

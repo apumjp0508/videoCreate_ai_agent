@@ -45,7 +45,8 @@ docker compose -f "$COMPOSE_FILE" exec web python manage.py migrate
 
 echo "🌱 モックデータを投入中..."
 docker compose -f "$COMPOSE_FILE" exec web python manage.py seed_users
-docker compose -f "$COMPOSE_FILE" exec web python manage.py seed_video_ai_providers
+docker compose -f "$COMPOSE_FILE" exec web python manage.py seed_ai_models
+docker compose -f "$COMPOSE_FILE" exec web python manage.py seed_media
 
 echo "✅ 起動完了"
 echo ""
@@ -63,6 +64,17 @@ echo "👤 モックユーザー"
 echo "  alice@example.com / password123  (一般ユーザー)"
 echo "  bob@example.com   / password123  (一般ユーザー)"
 echo "  admin@example.com / password123  (管理者)"
+echo ""
+echo "🤖 AI プロバイダー / モデル (seed_ai_models)"
+echo "  Runway    : gen3a_turbo, gen3a"
+echo "  Kling AI  : kling-v1, kling-v1-5, kling-v2-master"
+echo "  Pika      : pika-2.2 (active), pika-2.1 (inactive)"
+echo "  Luma AI   : dream-machine, ray2-flash"
+echo ""
+echo "🖼️  メディアデータ (seed_media) — ユーザーごとに画像×3 / 音声×3"
+echo "  alice : 都市・自然・ポートレート / BGM 3種"
+echo "  bob   : オフィス・テック・夜景  / BGM 3種"
+echo "  admin : テスト画像 A/B/C        / テスト音声 A/B/C"
 echo ""
 echo "🔐 管理画面"
 echo "  http://localhost:8000/admin-panel/"
