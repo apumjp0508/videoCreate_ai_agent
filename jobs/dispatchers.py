@@ -86,32 +86,18 @@ class TemporalWorkflowDispatcher:
         builder: PipelineInputBuilderProtocol,
     ) -> None:
         try:
-            asyncio.run(self._dispatch_async(job, builder))
+            # DB クエリを含む build() は同期コンテキストで先に実行する
+            pipeline_input = builder.build(job)
+            handle_id, run_id = asyncio.run(self._start_workflow_async(pipeline_input, job.id))
         except WorkflowStartError:
             raise
         except Exception as exc:
             self._mark_failed(job, exc)
             raise WorkflowStartError(str(exc)) from exc
 
-    async def _dispatch_async(
-        self,
-        job: VideoJob,
-        builder: PipelineInputBuilderProtocol,
-    ) -> None:
-        """Pipeline Input を組み立てて Temporal Workflow を start する（非同期）。"""
-        pipeline_input = builder.build(job)
-
-        client = await get_temporal_client()
-        handle = await client.start_workflow(
-            VideoPipelineWorkflow.run,
-            pipeline_input,
-            id=str(job.id),
-            task_queue=settings.TEMPORAL_TASK_QUEUE,
-        )
-
-        # 起動成功 → job を更新
-        job.temporal_workflow_id = handle.id
-        job.temporal_run_id = handle.first_execution_run_id
+        # 起動成功 → DB 書き込みも同期コンテキストで行う
+        job.temporal_workflow_id = handle_id
+        job.temporal_run_id = run_id
         job.status = JobStatus.GENERATING
         job.started_at = datetime.now(timezone.utc)
         job.save(update_fields=[
@@ -122,12 +108,23 @@ class TemporalWorkflowDispatcher:
         VideoJobEvent.objects.create(
             job=job,
             event_type=EventType.WORKFLOW_STARTED,
-            message=f"Workflow started  id={handle.id}",
+            message=f"Workflow started  id={handle_id}",
             payload_json={
-                'workflow_id': handle.id,
-                'run_id': handle.first_execution_run_id,
+                'workflow_id': handle_id,
+                'run_id': run_id,
             },
         )
+
+    async def _start_workflow_async(self, pipeline_input, job_id) -> tuple[str, str]:
+        """Temporal Workflow を起動して (workflow_id, run_id) を返す（非同期）。"""
+        client = await get_temporal_client()
+        handle = await client.start_workflow(
+            VideoPipelineWorkflow.run,
+            pipeline_input,
+            id=str(job_id),
+            task_queue=settings.TEMPORAL_TASK_QUEUE,
+        )
+        return handle.id, handle.first_execution_run_id
 
     def _mark_failed(self, job: VideoJob, exc: Exception) -> None:
         """送信失敗時に job を failed 状態に更新してイベントを記録する。"""

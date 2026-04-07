@@ -85,7 +85,8 @@ class VideoGenerationWorkflow:
             fetch_ai_config,
             FetchAiConfigInput(
                 job_id=input.job_id,
-                video_ai_config_id=input.video_ai_config_id,
+                credential_id=input.credential_id,
+                model_id=input.model_id,
             ),
             start_to_close_timeout=timedelta(minutes=2),
         )

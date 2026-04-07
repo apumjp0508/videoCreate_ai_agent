@@ -211,6 +211,7 @@
         将来 view 側で status / message を付与すれば、
         data-status 属性と .status-* クラスで適合判定を表示できる。
       -->
+      <!-- プロバイダー選択 -->
       <div class="provider-list">
         {% for provider in providers %}
           <label class="provider-card" for="provider_{{ provider.id }}">
@@ -220,12 +221,11 @@
               id="provider_{{ provider.id }}"
               name="provider"
               value="{{ provider.id }}"
+              data-provider="{{ provider.id }}"
               {% if form.provider.value == provider.id %}checked{% endif %}
             >
             <div class="provider-info">
               <div class="provider-name">{{ provider.name }}</div>
-
-              {# 将来: provider.status が設定されたときにバッジを表示する #}
               {% if provider.status == 'ok' %}
                 <div class="provider-status status-ok">使用可能</div>
               {% elif provider.status == 'caution' %}
@@ -233,7 +233,6 @@
               {% elif provider.status == 'unavailable' %}
                 <div class="provider-status status-unavailable">使用不可</div>
               {% endif %}
-
               {% if provider.message %}
                 <div class="provider-status" style="color:#64748b;">{{ provider.message }}</div>
               {% endif %}
@@ -241,11 +240,36 @@
           </label>
         {% endfor %}
       </div>
-
-      <!-- バリデーションエラー -->
       {% if form.provider.errors %}
         <div class="field-errors">{{ form.provider.errors }}</div>
       {% endif %}
+
+      <!-- モデル選択 -->
+      <div style="margin-bottom: 1.5rem;">
+        <label style="display:block; font-size:0.83rem; font-weight:600; color:#cbd5e1; margin-bottom:0.5rem;">
+          モデル
+        </label>
+        <select name="model_id" id="model_id" style="
+          width:100%; padding:0.7rem 1rem;
+          background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1);
+          border-radius:10px; color:#e2e8f0; font-size:0.88rem; font-family:inherit;
+          appearance:none; cursor:pointer; outline:none;
+        ">
+          <option value="">── プロバイダーを選択するとモデルが表示されます ──</option>
+          {% for provider in providers %}
+            {% for model in provider.models %}
+              <option
+                value="{{ model.id }}"
+                data-provider="{{ provider.id }}"
+                {% if form.model_id.value == model.id|stringformat:"s" %}selected{% endif %}
+              >{{ model.model_name }}</option>
+            {% endfor %}
+          {% endfor %}
+        </select>
+        {% if form.model_id.errors %}
+          <div class="field-errors">{{ form.model_id.errors }}</div>
+        {% endif %}
+      </div>
 
       <!-- ボタン -->
       <div class="form-actions">
@@ -259,4 +283,33 @@
   </div>
 
 </div>
+
+<script>
+  (function () {
+    function filterModels() {
+      const checked = document.querySelector('input[name="provider"]:checked');
+      const selectedProvider = checked ? checked.value : '';
+      const select = document.getElementById('model_id');
+      let firstVisible = null;
+
+      Array.from(select.options).forEach(opt => {
+        if (!opt.dataset.provider) return; // placeholder
+        const match = opt.dataset.provider === selectedProvider;
+        opt.hidden = !match;
+        if (match && !firstVisible) firstVisible = opt;
+      });
+
+      // 選択中のオプションが非表示になったらリセット
+      if (select.selectedOptions[0] && select.selectedOptions[0].hidden) {
+        select.value = firstVisible ? firstVisible.value : '';
+      }
+    }
+
+    document.querySelectorAll('input[name="provider"]').forEach(radio => {
+      radio.addEventListener('change', filterModels);
+    });
+
+    filterModels();
+  })();
+</script>
 {% endblock %}

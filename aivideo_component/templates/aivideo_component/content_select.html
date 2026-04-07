@@ -396,6 +396,18 @@
         {% endif %}
       </div>
 
+      <hr class="form-divider">
+
+      <!-- 公開設定 -->
+      <div class="field-group">
+        <label class="field-label" for="{{ form.publish_mode.id_for_label }}">公開設定</label>
+        {{ form.publish_mode }}
+        <p class="field-hint">YouTube にアップロードする際の公開範囲を選択してください。</p>
+        {% if form.publish_mode.errors %}
+          <div class="field-errors">{{ form.publish_mode.errors }}</div>
+        {% endif %}
+      </div>
+
       <!-- ボタン -->
       <div class="form-actions">
         <a href="{% url 'google_auth:youtube_select' %}" class="btn-back">← チャンネル選択に戻る</a>

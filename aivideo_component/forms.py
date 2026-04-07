@@ -88,24 +88,27 @@ class AudioEditForm(forms.Form):
     )
 
 
-# ─────────────────────── AI Provider ───────────────────────
-
-# provider 一覧をここで一元管理する。
-# 将来 status / message / constraints などを追加するときはここに項目を追加する。
-AI_PROVIDERS = [
-    {'id': 'runway', 'name': 'Runway'},
-    {'id': 'pika',   'name': 'Pika'},
-    {'id': 'kling',  'name': 'Kling'},
-]
-
+# ─────────────────────── AI Provider + Model ───────────────────────
 
 class AIProviderSelectForm(forms.Form):
     """
-    動画生成に使う AI プロバイダを選択するフォーム（動画作成ステップ3）。
-    choices は AI_PROVIDERS から自動生成するためハードコーディングしていない。
+    動画生成に使う AI プロバイダとモデルを選択するフォーム（動画作成ステップ3）。
+    choices はビューから動的にセットする（ユーザーの登録済み credential と
+    管理者が有効にした VideoAiModel を元に構築する）。
     """
     provider = forms.ChoiceField(
         label='生成AI',
-        choices=[(p['id'], p['name']) for p in AI_PROVIDERS],
+        choices=[],
         widget=forms.RadioSelect,
     )
+    model_id = forms.ChoiceField(
+        label='モデル',
+        choices=[],
+    )
+
+    def __init__(self, *args, provider_choices=None, model_choices=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if provider_choices is not None:
+            self.fields['provider'].choices = provider_choices
+        if model_choices is not None:
+            self.fields['model_id'].choices = model_choices

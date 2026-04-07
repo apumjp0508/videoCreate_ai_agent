@@ -59,32 +59,26 @@ class UserVideoAiCredential(models.Model):
         return self.api_key[:4] + '****' + self.api_key[-4:]
 
 
-class UserVideoAiConfig(models.Model):
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='video_ai_configs',
-    )
+class VideoAiModel(models.Model):
+    """
+    各 AI プロバイダーが提供するモデルの一覧。
+    管理画面で登録・有効/無効を操作する。
+    ユーザーは Config 作成時にここから選択する。
+    """
     provider = models.ForeignKey(
         VideoAiProvider,
         on_delete=models.CASCADE,
-        related_name='configs',
+        related_name='models',
     )
-    credential = models.ForeignKey(
-        UserVideoAiCredential,
-        on_delete=models.CASCADE,
-        related_name='configs',
-    )
-    config_name = models.CharField(max_length=100)
     model_name = models.CharField(max_length=100)
-    description = models.TextField(blank=True)
-    is_default = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'user_video_ai_configs'
+        db_table = 'video_ai_models'
+        unique_together = ('provider', 'model_name')
+        ordering = ['provider', 'model_name']
 
     def __str__(self):
-        return f"{self.user.email} - {self.config_name}"
+        return f"{self.provider.provider_name} / {self.model_name}"
+
+

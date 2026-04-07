@@ -1,0 +1,62 @@
+{% extends "admin_panel/base.html" %}
+
+{% block title %}モデル一覧 — {{ provider.provider_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ provider.provider_name }} — モデル一覧</h1>
+  <p>
+    <a href="{% url 'admin_panel:provider_list' %}">← プロバイダー一覧に戻る</a>
+  </p>
+</div>
+
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <span style="font-size: 0.9rem; color: #666;">{{ models|length }} 件</span>
+    <a href="{% url 'admin_panel:model_create' provider_id=provider.id %}" class="btn btn-primary btn-sm">+ モデル追加</a>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>モデル名</th>
+        <th>状態</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for model in models %}
+      <tr>
+        <td>{{ model.id }}</td>
+        <td><code>{{ model.model_name }}</code></td>
+        <td>
+          {% if model.is_active %}
+            <span class="badge badge-green">有効</span>
+          {% else %}
+            <span class="badge badge-gray">無効</span>
+          {% endif %}
+        </td>
+        <td>
+          <form method="post" action="{% url 'admin_panel:model_toggle' provider_id=provider.id model_id=model.id %}" style="display: inline;">
+            {% csrf_token %}
+            {% if model.is_active %}
+              <button type="submit" class="btn btn-sm" style="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;">有効 ▶ 無効にする</button>
+            {% else %}
+              <button type="submit" class="btn btn-sm" style="background:#e5e7eb;color:#6b7280;border:1px solid #d1d5db;">無効 ▶ 有効にする</button>
+            {% endif %}
+          </form>
+          <a href="{% url 'admin_panel:model_edit' provider_id=provider.id model_id=model.id %}" class="btn btn-secondary btn-sm">編集</a>
+          <form method="post" action="{% url 'admin_panel:model_delete' provider_id=provider.id model_id=model.id %}" style="display: inline;" onsubmit="return confirm('「{{ model.model_name }}」を削除しますか？')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-sm">削除</button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4" style="text-align: center; color: #999;">モデルが登録されていません</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

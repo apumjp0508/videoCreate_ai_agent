@@ -1,7 +1,7 @@
 from django import forms
 
 from accounts.models import User
-from video_ai.models import VideoAiProvider
+from video_ai.models import VideoAiModel, VideoAiProvider
 
 
 class AdminLoginForm(forms.Form):
@@ -49,6 +49,19 @@ class UserCreateForm(forms.ModelForm):
         if commit:
             user.save()
         return user
+
+
+class VideoAiModelForm(forms.ModelForm):
+    class Meta:
+        model = VideoAiModel
+        fields = ['model_name', 'is_active']
+        labels = {
+            'model_name': 'モデル名',
+            'is_active': '有効',
+        }
+        widgets = {
+            'model_name': forms.TextInput(attrs={'placeholder': '例: gen-4'}),
+        }
 
 
 class ProviderForm(forms.ModelForm):

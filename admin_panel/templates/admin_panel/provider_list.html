@@ -55,6 +55,7 @@
           </form>
         </td>
         <td>
+          <a href="{% url 'admin_panel:model_list' provider_id=provider.id %}" class="btn btn-secondary btn-sm">モデル管理</a>
           <a href="{% url 'admin_panel:provider_edit' provider_id=provider.id %}" class="btn btn-secondary btn-sm">編集</a>
           <form method="post" action="{% url 'admin_panel:provider_delete' provider_id=provider.id %}" style="display: inline;" onsubmit="return confirm('{{ provider.provider_name }} を削除しますか？')">
             {% csrf_token %}

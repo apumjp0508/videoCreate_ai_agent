@@ -59,7 +59,8 @@ async def fetch_materials(input: FetchMaterialsInput) -> FetchMaterialsOutput:
 @dataclass
 class FetchAiConfigInput:
     job_id: str
-    video_ai_config_id: int
+    credential_id: int
+    model_id: int
 
 
 @dataclass

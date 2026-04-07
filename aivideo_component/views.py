@@ -1,6 +1,12 @@
+import logging
+import traceback
+
+from django.conf import settings
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
+
+logger = logging.getLogger(__name__)
 
 from google_auth.models import YoutubeChannel
 from jobs.services import VideoAiConfigNotFoundError, WorkflowStartError, create_video_job, start_workflow_for_job
@@ -8,7 +14,7 @@ from .forms import (
     AudioEditForm, AudioUploadForm,
     ContentSelectForm,
     ImageEditForm, ImageUploadForm,
-    AIProviderSelectForm, AI_PROVIDERS,
+    AIProviderSelectForm,
 )
 from .models import GeneratedAudio, GeneratedImage
 from .validation.protocol import AudioMeta, ContentValidationInput, ImageMeta
@@ -305,23 +311,78 @@ class AudioDeleteView(View):
 
 class AIProviderSelectView(View):
     """
-    動画生成に使う AI プロバイダを選択する画面（動画作成ステップ3）。
-
-    現時点はフォーム表示のみ。将来の拡張ポイント:
-      - providers に status / message を付与して適合判定を表示
-      - POST 処理で動画生成ジョブを作成
+    動画生成に使う AI プロバイダとモデルを選択する画面（動画作成ステップ3）。
     """
 
-    def _build_providers(self):
+    def _build_choices(self, request):
         """
-        テンプレートに渡す provider リストを組み立てる。
-        将来は画像・音声のメタ情報を元に status / message を付与する。
-        例: {'id': 'runway', 'name': 'Runway', 'status': 'ok', 'message': '使用可能'}
+        ユーザーの登録済み credential と管理者が有効にした VideoAiModel から
+        フォーム用の choices と補助情報を組み立てる。
+
+        Returns:
+            provider_choices    : [(provider_key, name), ...]
+            model_choices       : [(str(model_id), model_name), ...]
+            credential_map      : {provider_key: credential_id}
+            models_by_provider  : {provider_key: [VideoAiModel, ...]}
         """
-        return [
-            {**p, 'status': None, 'message': None}
-            for p in AI_PROVIDERS
+        from video_ai.models import UserVideoAiCredential, VideoAiModel
+
+        credentials = (
+            UserVideoAiCredential.objects
+            .filter(user=request.user, is_active=True)
+            .select_related('provider')
+        )
+
+        credential_map = {c.provider.provider_key: c.id for c in credentials}
+        provider_ids = [c.provider_id for c in credentials]
+
+        provider_choices = [
+            (c.provider.provider_key, c.provider.provider_name)
+            for c in credentials
         ]
+
+        active_models = (
+            VideoAiModel.objects
+            .filter(provider_id__in=provider_ids, is_active=True)
+            .select_related('provider')
+            .order_by('provider__provider_name', 'model_name')
+        )
+
+        model_choices = [(str(m.id), m.model_name) for m in active_models]
+
+        models_by_provider: dict = {}
+        for m in active_models:
+            models_by_provider.setdefault(m.provider.provider_key, []).append(m)
+
+        return provider_choices, model_choices, credential_map, models_by_provider
+
+    def _build_provider_data(self, request):
+        """テンプレートに渡す provider リスト（models 付き）を組み立てる。"""
+        from video_ai.models import UserVideoAiCredential, VideoAiModel
+
+        credentials = (
+            UserVideoAiCredential.objects
+            .filter(user=request.user, is_active=True)
+            .select_related('provider')
+        )
+
+        provider_data = []
+        for c in credentials:
+            models = list(
+                VideoAiModel.objects
+                .filter(provider=c.provider, is_active=True)
+                .order_by('model_name')
+            )
+            provider_data.append({
+                'id':            c.provider.provider_key,
+                'name':          c.provider.provider_name,
+                'credential_id': c.id,
+                'models':        models,
+                'status':        None,
+                'message':       None,
+            })
+
+        return provider_data
 
     def _build_validation_input(
         self,
@@ -373,46 +434,63 @@ class AIProviderSelectView(View):
     def get(self, request, channel_id: int):
         if not request.user.is_authenticated:
             return redirect('accounts:login')
+        provider_choices, model_choices, _, _ = self._build_choices(request)
         return render(request, 'aivideo_component/provider_select.html', {
-            'form': AIProviderSelectForm(),
-            'providers': self._build_providers(),
+            'form': AIProviderSelectForm(
+                provider_choices=provider_choices,
+                model_choices=model_choices,
+            ),
+            'providers': self._build_provider_data(request),
             'channel_id': channel_id,
         })
 
     def post(self, request, channel_id: int):
         if not request.user.is_authenticated:
             return redirect('accounts:login')
-        form = AIProviderSelectForm(request.POST)
-        if not form.is_valid():
+
+        provider_choices, model_choices, credential_map, models_by_provider = self._build_choices(request)
+        form = AIProviderSelectForm(
+            request.POST,
+            provider_choices=provider_choices,
+            model_choices=model_choices,
+        )
+
+        def _render(f):
             return render(request, 'aivideo_component/provider_select.html', {
-                'form': form,
-                'providers': self._build_providers(),
+                'form': f,
+                'providers': self._build_provider_data(request),
                 'channel_id': channel_id,
             })
 
+        if not form.is_valid():
+            return _render(form)
+
         provider_key = form.cleaned_data['provider']
+        model_id     = int(form.cleaned_data['model_id'])
+        credential_id = credential_map.get(provider_key)
+
+        # モデルが選択プロバイダーに属しているか確認
+        valid_model_ids = {m.id for m in models_by_provider.get(provider_key, [])}
+        if model_id not in valid_model_ids:
+            messages.error(request, '選択されたモデルはプロバイダーに対応していません。')
+            return _render(form)
 
         # ── コンテンツバリデーション ──────────────────────────────
         selection = request.session.get(_CONTENT_SELECTION_SESSION_KEY, {})
         try:
             validation_input = self._build_validation_input(provider_key, selection)
             result = validate_content(validation_input)
-        except UnknownProviderError:
+        except UnknownProviderError as exc:
+            logger.warning('UnknownProviderError: %s', exc)
             messages.error(request, '選択された AI プロバイダーは現在サポートされていません。')
-            return render(request, 'aivideo_component/provider_select.html', {
-                'form': form,
-                'providers': self._build_providers(),
-                'channel_id': channel_id,
-            })
+            if settings.DEBUG:
+                messages.error(request, f'[DEV] {traceback.format_exc()}')
+            return _render(form)
 
         if not result.is_valid:
             for issue in result.errors:
                 messages.error(request, f'[{issue.field}] {issue.message}')
-            return render(request, 'aivideo_component/provider_select.html', {
-                'form': form,
-                'providers': self._build_providers(),
-                'channel_id': channel_id,
-            })
+            return _render(form)
 
         for issue in result.warnings:
             messages.warning(request, f'[{issue.field}] {issue.message}')
@@ -422,30 +500,29 @@ class AIProviderSelectView(View):
             job = create_video_job(
                 user=request.user,
                 channel_id=channel_id,
-                provider_key=provider_key,
+                credential_id=credential_id,
+                model_id=model_id,
                 script=selection.get('script', ''),
                 image_id=int(selection['image_id']) if selection.get('image_id') else None,
                 audio_id=int(selection['audio_id']) if selection.get('audio_id') else None,
                 publish_mode=selection.get('publish_mode', 'private'),
             )
         except VideoAiConfigNotFoundError as exc:
+            logger.error('VideoAiConfigNotFoundError: %s', exc)
             messages.error(request, str(exc))
-            return render(request, 'aivideo_component/provider_select.html', {
-                'form': form,
-                'providers': self._build_providers(),
-                'channel_id': channel_id,
-            })
+            if settings.DEBUG:
+                messages.error(request, f'[DEV] {traceback.format_exc()}')
+            return _render(form)
 
         # ── Temporal Workflow 起動 ────────────────────────────────
         try:
             start_workflow_for_job(job)
         except WorkflowStartError as exc:
+            logger.error('WorkflowStartError job_id=%s: %s', job.id, exc)
             messages.error(request, f'動画生成の開始に失敗しました。しばらく経ってから再試行してください。（{exc}）')
-            return render(request, 'aivideo_component/provider_select.html', {
-                'form': form,
-                'providers': self._build_providers(),
-                'channel_id': channel_id,
-            })
+            if settings.DEBUG:
+                messages.error(request, f'[DEV] {traceback.format_exc()}')
+            return _render(form)
 
         # ── 成功 → セッションをクリアして完了 ────────────────────
         request.session.pop(_CONTENT_SELECTION_SESSION_KEY, None)

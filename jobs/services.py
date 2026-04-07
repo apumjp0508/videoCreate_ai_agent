@@ -54,7 +54,8 @@ from jobs.models import VideoJob
 def create_video_job(
     user,
     channel_id: int,
-    provider_key: str,
+    credential_id: int,
+    model_id: int,
     script: str,
     image_id: int | None,
     audio_id: int | None,
@@ -68,7 +69,7 @@ def create_video_job(
         creator: Job 作成インターフェースの実装（省略時は VideoJobCreator）
 
     Raises:
-        VideoAiConfigNotFoundError: provider_key に対応する設定が存在しない場合
+        VideoAiConfigNotFoundError: credential / model が無効な場合
         YoutubeChannel.DoesNotExist: channel_id が不正な場合
     """
     if creator is None:
@@ -77,7 +78,8 @@ def create_video_job(
     return creator.create(
         user=user,
         channel_id=channel_id,
-        provider_key=provider_key,
+        credential_id=credential_id,
+        model_id=model_id,
         script=script,
         image_id=image_id,
         audio_id=audio_id,

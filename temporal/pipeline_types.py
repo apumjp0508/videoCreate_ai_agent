@@ -28,7 +28,8 @@ class PipelineInput:
 
     # ユーザー / AI 設定
     user_id: int
-    video_ai_config_id: int
+    credential_id: int
+    model_id: int
 
     # コンテンツ素材
     prompt_id: int
@@ -62,7 +63,8 @@ class VideoGenerationWorkflowInput:
     """動画生成子 Workflow への入力。"""
     job_id: str
     user_id: int
-    video_ai_config_id: int
+    credential_id: int
+    model_id: int
     prompt_id: int
     image_ids: list[int] = field(default_factory=list)
     audio_ids: list[int] = field(default_factory=list)

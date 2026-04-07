@@ -63,7 +63,8 @@ class VideoPipelineWorkflow:
             VideoGenerationWorkflowInput(
                 job_id=input.job_id,
                 user_id=input.user_id,
-                video_ai_config_id=input.video_ai_config_id,
+                credential_id=input.credential_id,
+                model_id=input.model_id,
                 prompt_id=input.prompt_id,
                 image_ids=input.image_ids,
                 audio_ids=input.audio_ids,

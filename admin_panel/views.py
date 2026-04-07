@@ -4,9 +4,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 
 from accounts.models import User
-from video_ai.models import VideoAiProvider
+from video_ai.models import VideoAiModel, VideoAiProvider
 
-from .forms import AdminLoginForm, ProviderForm, UserCreateForm, UserEditForm
+from .forms import AdminLoginForm, ProviderForm, UserCreateForm, UserEditForm, VideoAiModelForm
 from .mixins import StaffRequiredMixin
 
 
@@ -169,3 +169,90 @@ class ProviderDeleteView(StaffRequiredMixin, View):
         provider.delete()
         messages.success(request, 'プロバイダーを削除しました。')
         return redirect('admin_panel:provider_list')
+
+
+# ---------- AIモデル管理 ----------
+
+class ModelListView(StaffRequiredMixin, View):
+    def get(self, request, provider_id):
+        provider = get_object_or_404(VideoAiProvider, id=provider_id)
+        models_qs = VideoAiModel.objects.filter(provider=provider).order_by('model_name')
+        return render(request, 'admin_panel/model_list.html', {
+            'provider': provider,
+            'models': models_qs,
+        })
+
+
+class ModelCreateView(StaffRequiredMixin, View):
+    def get(self, request, provider_id):
+        provider = get_object_or_404(VideoAiProvider, id=provider_id)
+        form = VideoAiModelForm()
+        return render(request, 'admin_panel/model_form.html', {
+            'provider': provider,
+            'form': form,
+            'action': 'create',
+        })
+
+    def post(self, request, provider_id):
+        provider = get_object_or_404(VideoAiProvider, id=provider_id)
+        form = VideoAiModelForm(request.POST)
+        if form.is_valid():
+            model = form.save(commit=False)
+            model.provider = provider
+            model.save()
+            messages.success(request, f'モデル「{model.model_name}」を追加しました。')
+            return redirect('admin_panel:model_list', provider_id=provider_id)
+        return render(request, 'admin_panel/model_form.html', {
+            'provider': provider,
+            'form': form,
+            'action': 'create',
+        })
+
+
+class ModelEditView(StaffRequiredMixin, View):
+    def get(self, request, provider_id, model_id):
+        provider = get_object_or_404(VideoAiProvider, id=provider_id)
+        model = get_object_or_404(VideoAiModel, id=model_id, provider=provider)
+        form = VideoAiModelForm(instance=model)
+        return render(request, 'admin_panel/model_form.html', {
+            'provider': provider,
+            'form': form,
+            'action': 'edit',
+            'model': model,
+        })
+
+    def post(self, request, provider_id, model_id):
+        provider = get_object_or_404(VideoAiProvider, id=provider_id)
+        model = get_object_or_404(VideoAiModel, id=model_id, provider=provider)
+        form = VideoAiModelForm(request.POST, instance=model)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'モデル「{model.model_name}」を更新しました。')
+            return redirect('admin_panel:model_list', provider_id=provider_id)
+        return render(request, 'admin_panel/model_form.html', {
+            'provider': provider,
+            'form': form,
+            'action': 'edit',
+            'model': model,
+        })
+
+
+class ModelDeleteView(StaffRequiredMixin, View):
+    def post(self, request, provider_id, model_id):
+        provider = get_object_or_404(VideoAiProvider, id=provider_id)
+        model = get_object_or_404(VideoAiModel, id=model_id, provider=provider)
+        name = model.model_name
+        model.delete()
+        messages.success(request, f'モデル「{name}」を削除しました。')
+        return redirect('admin_panel:model_list', provider_id=provider_id)
+
+
+class ModelToggleView(StaffRequiredMixin, View):
+    def post(self, request, provider_id, model_id):
+        provider = get_object_or_404(VideoAiProvider, id=provider_id)
+        model = get_object_or_404(VideoAiModel, id=model_id, provider=provider)
+        model.is_active = not model.is_active
+        model.save(update_fields=['is_active'])
+        status = '有効' if model.is_active else '無効'
+        messages.success(request, f'「{model.model_name}」を{status}にしました。')
+        return redirect('admin_panel:model_list', provider_id=provider_id)

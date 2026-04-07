@@ -1,0 +1,35 @@
+{% extends "admin_panel/base.html" %}
+
+{% block title %}{% if action == 'create' %}モデル追加{% else %}モデル編集{% endif %} — {{ provider.provider_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ provider.provider_name }} — {% if action == 'create' %}モデル追加{% else %}モデル編集{% endif %}</h1>
+  <p>
+    <a href="{% url 'admin_panel:model_list' provider_id=provider.id %}">← モデル一覧に戻る</a>
+  </p>
+</div>
+
+<div class="card" style="max-width: 480px;">
+  <form method="post">
+    {% csrf_token %}
+
+    {% for field in form %}
+    <div class="form-group">
+      {% if field.field.widget.input_type == 'checkbox' %}
+        <label class="checkbox-label">{{ field }} {{ field.label }}</label>
+      {% else %}
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+      {% endif %}
+      {% if field.errors %}<div class="form-error">{{ field.errors }}</div>{% endif %}
+    </div>
+    {% endfor %}
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{% if action == 'create' %}追加する{% else %}更新する{% endif %}</button>
+      <a href="{% url 'admin_panel:model_list' provider_id=provider.id %}" class="btn btn-secondary">キャンセル</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

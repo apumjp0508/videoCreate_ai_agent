@@ -83,12 +83,18 @@ class VideoPipelineInputBuilder:
             raise PipelineInputBuildError(
                 f"job.prompt が未設定です  job_id={job.id}"
             )
-        if job.youtube_channel is None:
+        if job.youtube_channel_id is None:
             raise PipelineInputBuildError(
                 f"job.youtube_channel が未設定です  job_id={job.id}"
             )
 
-        channel = job.youtube_channel
+        # oauth_token まで含めて一括取得し、lazy クエリを防ぐ
+        from google_auth.models import YoutubeChannel
+        channel = (
+            YoutubeChannel.objects
+            .select_related('user_google_account__oauth_token')
+            .get(pk=job.youtube_channel_id)
+        )
         oauth_record_id = self._get_oauth_record_id(channel)
 
         assets = job.assets.all()
@@ -99,7 +105,8 @@ class VideoPipelineInputBuilder:
             job_id=str(job.id),
             request_id=str(uuid.uuid4()),
             user_id=job.user_id,
-            video_ai_config_id=job.video_ai_config_id or 0,
+            credential_id=job.credential_id or 0,
+            model_id=job.model_id or 0,
             prompt_id=job.prompt_id,
             image_ids=image_ids,
             audio_ids=audio_ids,

@@ -125,9 +125,13 @@ class VideoJob(models.Model):
         null=True, blank=True,
         related_name='video_jobs',
     )
-    video_ai_config_id = models.IntegerField(
+    credential_id = models.IntegerField(
         null=True, blank=True,
-        help_text='video_ai.UserVideoAiConfig の id',
+        help_text='user_video_ai_credentials の id',
+    )
+    model_id = models.IntegerField(
+        null=True, blank=True,
+        help_text='video_ai_models の id',
     )
     publish_mode = models.CharField(max_length=20, default='private')
 

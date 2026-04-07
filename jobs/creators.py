@@ -4,14 +4,7 @@ VideoJob を作成するクリエイター。
 設計:
   JobCreatorProtocol         ─ インターフェース（Protocol）
   VideoJobCreator            ─ VideoJob（DB）を作成する具体的な実装
-  VideoAiConfigNotFoundError ─ AI 設定が見つからない場合の例外
-
-クリエイターを差し替えることで、将来の別 Job 形態にも対応できる。
-
-例:
-  # 将来の別 Job 形態に差し替える場合
-  creator = SomeOtherJobCreator()
-  create_video_job(..., creator=creator)
+  VideoAiConfigNotFoundError ─ credential / model が見つからない場合の例外
 """
 from __future__ import annotations
 
@@ -30,7 +23,6 @@ from jobs.models import (
     VideoJobAsset,
     VideoJobEvent,
 )
-from video_ai.models import UserVideoAiConfig
 
 
 # ─────────────────────────────────────────────────────────────
@@ -38,7 +30,7 @@ from video_ai.models import UserVideoAiConfig
 # ─────────────────────────────────────────────────────────────
 
 class VideoAiConfigNotFoundError(Exception):
-    """指定した provider_key に対応する有効な UserVideoAiConfig が存在しない場合。"""
+    """指定した credential / model が見つからない、または無効な場合。"""
 
 
 # ─────────────────────────────────────────────────────────────
@@ -46,29 +38,17 @@ class VideoAiConfigNotFoundError(Exception):
 # ─────────────────────────────────────────────────────────────
 
 class JobCreatorProtocol(Protocol):
-    """
-    Job を作成するインターフェース。
-
-    Job の形が変わっても呼び出し側（services.py）は変更不要。
-    Workflow の種類や Job の種類が増えたときに実装を差し替える。
-    """
-
     def create(
         self,
         user,
         channel_id: int,
-        provider_key: str,
+        credential_id: int,
+        model_id: int,
         script: str,
         image_id: int | None,
         audio_id: int | None,
         publish_mode: str,
     ) -> Any:
-        """
-        Job を DB に作成して返す。
-
-        Raises:
-            VideoAiConfigNotFoundError: provider_key に対応する設定が存在しない場合
-        """
         ...
 
 
@@ -80,11 +60,8 @@ class VideoJobCreator:
     """
     VideoJob / VideoJobAsset / VideoJobEvent を DB に作成するクリエイター。
 
-    DB 操作はすべてトランザクション1本で行う。
-    Temporal の起動はここでは行わない（start_workflow_for_job を別途呼ぶ）。
-
     Raises:
-        VideoAiConfigNotFoundError: provider_key に対応する設定が存在しない場合
+        VideoAiConfigNotFoundError: credential_id / model_id が無効な場合
         YoutubeChannel.DoesNotExist: channel_id が不正な場合
     """
 
@@ -92,13 +69,14 @@ class VideoJobCreator:
         self,
         user,
         channel_id: int,
-        provider_key: str,
+        credential_id: int,
+        model_id: int,
         script: str,
         image_id: int | None,
         audio_id: int | None,
         publish_mode: str = 'private',
     ) -> VideoJob:
-        config = self._resolve_video_ai_config(user, provider_key)
+        credential, model = self._resolve_credential_and_model(user, credential_id, model_id)
         channel = (
             YoutubeChannel.objects
             .select_related('user_google_account')
@@ -106,7 +84,6 @@ class VideoJobCreator:
         )
 
         with transaction.atomic():
-            # プロンプトを先に保存して prompt_id を確定させる
             prompt = Prompt.objects.create(user=user, prompt_text=script)
 
             job = VideoJob.objects.create(
@@ -114,7 +91,8 @@ class VideoJobCreator:
                 status=JobStatus.QUEUED,
                 request_type=RequestType.GENERATE_AND_PUBLISH,
                 prompt=prompt,
-                video_ai_config_id=config.id,
+                credential_id=credential.id,
+                model_id=model.id,
                 google_account=channel.user_google_account,
                 youtube_channel=channel,
                 publish_mode=publish_mode,
@@ -137,10 +115,11 @@ class VideoJobCreator:
             VideoJobEvent.objects.create(
                 job=job,
                 event_type=EventType.JOB_CREATED,
-                message=f"Job created  provider={provider_key}  config_id={config.id}",
+                message=f"Job created  credential={credential.id}  model={model.model_name}",
                 payload_json={
-                    'provider_key':  provider_key,
-                    'config_id':     config.id,
+                    'credential_id': credential.id,
+                    'model_id':      model.id,
+                    'model_name':    model.model_name,
                     'image_id':      image_id,
                     'audio_id':      audio_id,
                 },
@@ -148,21 +127,29 @@ class VideoJobCreator:
 
         return job
 
-    def _resolve_video_ai_config(self, user, provider_key: str) -> UserVideoAiConfig:
-        """provider_key からユーザーのデフォルト UserVideoAiConfig を解決する。"""
-        config = (
-            UserVideoAiConfig.objects
-            .filter(
-                user=user,
-                provider__provider_key=provider_key,
-                is_default=True,
+    def _resolve_credential_and_model(self, user, credential_id: int, model_id: int):
+        from video_ai.models import UserVideoAiCredential, VideoAiModel
+
+        try:
+            credential = (
+                UserVideoAiCredential.objects
+                .select_related('provider')
+                .get(id=credential_id, user=user, is_active=True)
+            )
+        except UserVideoAiCredential.DoesNotExist:
+            raise VideoAiConfigNotFoundError(
+                f"APIキーが見つかりません。プロバイダーの設定を確認してください。（credential_id={credential_id}）"
+            )
+
+        try:
+            model = VideoAiModel.objects.get(
+                id=model_id,
+                provider=credential.provider,
                 is_active=True,
             )
-            .select_related('provider')
-            .first()
-        )
-        if config is None:
+        except VideoAiModel.DoesNotExist:
             raise VideoAiConfigNotFoundError(
-                f"AI設定が見つかりません。プロバイダー「{provider_key}」の設定を登録してください。"
+                f"モデルが見つかりません。管理者にお問い合わせください。（model_id={model_id}）"
             )
-        return config
+
+        return credential, model
