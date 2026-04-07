@@ -98,7 +98,7 @@ services:
     build:
       context: ../../
       dockerfile: Dockerfile
-    command: python -m temporal.worker
+    command: python -m temporal.worker_pipeline
     volumes:
       - ../../:/app
     env_file:
