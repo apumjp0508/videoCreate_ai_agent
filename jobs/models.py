@@ -160,6 +160,12 @@ class VideoJob(models.Model):
         blank=True,
     )
 
+    # ── YouTube 投稿結果 ─────────────────────────────────────
+    youtube_video_id  = models.CharField(max_length=20, blank=True,
+                                         help_text='YouTube 動画 ID (例: dQw4w9WgXcQ)')
+    youtube_video_url = models.URLField(blank=True,
+                                        help_text='YouTube 動画 URL')
+
     # ── エラー情報 ───────────────────────────────────────────
     error_code    = models.CharField(max_length=64, blank=True)
     error_message = models.TextField(blank=True)

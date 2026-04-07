@@ -10,32 +10,32 @@ VideoPipelineWorkflow 用 Worker エントリポイント。
     - VideoGenerationWorkflow   (子)
     - YoutubePublishWorkflow    (子)
 
-  Activities  ─ video_generation:
-    - dummy_fetch_materials
-    - dummy_fetch_ai_config
-    - dummy_fetch_request_definition
-    - dummy_build_ai_request
-    - dummy_submit_ai_request
-    - dummy_poll_generation_status
-    - dummy_fetch_generated_video
+  Activities  ─ video_generation（DjangoVideoGenerationService）:
+    - fetch_materials          ← Django ORM
+    - fetch_ai_config          ← Django ORM
+    - fetch_request_definition ← Django ORM
+    - build_ai_request         ← 純粋ロジック
+    - submit_ai_request        ← Dummy（AIプロバイダー固有: 差し替え必要）
+    - poll_generation_status   ← Dummy（AIプロバイダー固有: 差し替え必要）
+    - fetch_generated_video    ← Dummy（AIプロバイダー固有: 差し替え必要）
 
-  Activities  ─ video_metadata:
-    - dummy_analyze_video_content
-    - dummy_generate_video_metadata
+  Activities  ─ video_metadata（Dummy: AI プロバイダー固有）:
+    - analyze_video_content    ← Dummy（差し替え必要）
+    - generate_video_metadata  ← Dummy（差し替え必要）
 
-  Activities  ─ thumbnail_generation:
-    - dummy_generate_thumbnail
+  Activities  ─ thumbnail_generation（Dummy: AI プロバイダー固有）:
+    - generate_thumbnail       ← Dummy（差し替え必要）
 
-  Activities  ─ youtube_publish:
-    - dummy_fetch_youtube_account
-    - dummy_fetch_oauth_token
-    - dummy_refresh_access_token
-    - dummy_fetch_publish_settings
-    - dummy_build_upload_request
-    - dummy_upload_video_to_youtube
-    - dummy_set_thumbnail
-    - dummy_apply_publish_settings
-    - dummy_save_publish_result
+  Activities  ─ youtube_publish（DjangoYoutubePublishService + YoutubeDataApiService）:
+    - fetch_youtube_account    ← Django ORM
+    - fetch_oauth_token        ← Django ORM + Fernet 復号
+    - refresh_access_token     ← Google OAuth API + DB 更新
+    - fetch_publish_settings   ← Django ORM + AI 生成オーバーライド
+    - build_upload_request     ← 純粋ロジック
+    - upload_video_to_youtube  ← YouTube Data API v3
+    - set_thumbnail            ← YouTube Data API v3
+    - apply_publish_settings   ← YouTube Data API v3
+    - save_publish_result      ← Django ORM
 
 サービス差し替え方法:
   本番実装に切り替えるには、各 dummy.py の _service = の行を
@@ -61,6 +61,7 @@ from django.conf import settings  # noqa: E402
 from temporalio.worker import Worker  # noqa: E402
 
 # ── Activity 実装（ダミー） ───────────────────────────────────
+from temporal.activities.video_generation import dummy as vg_dummy  # noqa: E402
 from temporal.activities.video_generation.dummy import (  # noqa: E402
     dummy_build_ai_request,
     dummy_fetch_ai_config,
@@ -70,6 +71,22 @@ from temporal.activities.video_generation.dummy import (  # noqa: E402
     dummy_poll_generation_status,
     dummy_submit_ai_request,
 )
+
+# video_generation: DB操作・純粋ロジックを Django 実装に差し替える
+# （submit_ai_request / poll / fetch_generated_video はダミーのまま）
+from temporal.activities.video_generation.django_service import (  # noqa: E402
+    DjangoVideoGenerationService,
+)
+vg_dummy._service = DjangoVideoGenerationService()
+
+# youtube_publish: DB操作・YouTube API 呼び出しを Django 実装に差し替える
+from temporal.activities.youtube_publish.django_service import (  # noqa: E402
+    DjangoYoutubePublishService,
+)
+from temporal.activities.youtube_publish.youtube_api_service import (  # noqa: E402
+    YoutubeDataApiService,
+)
+yt_dummy._service = DjangoYoutubePublishService(youtube_api=YoutubeDataApiService())
 from temporal.activities.video_metadata.dummy import (  # noqa: E402
     dummy_analyze_video_content,
     dummy_generate_video_metadata,
@@ -77,6 +94,7 @@ from temporal.activities.video_metadata.dummy import (  # noqa: E402
 from temporal.activities.thumbnail_generation.dummy import (  # noqa: E402
     dummy_generate_thumbnail,
 )
+from temporal.activities.youtube_publish import dummy as yt_dummy  # noqa: E402
 from temporal.activities.youtube_publish.dummy import (  # noqa: E402
     dummy_apply_publish_settings,
     dummy_build_upload_request,

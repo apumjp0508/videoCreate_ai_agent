@@ -126,6 +126,7 @@ class VideoGenerationWorkflow:
             SubmitAiRequestInput(
                 job_id=input.job_id,
                 api_endpoint=ai_config.api_endpoint,
+                credential_id=ai_config.credential_id,
                 ai_request_payload=ai_request.ai_request_payload,
             ),
             start_to_close_timeout=timedelta(minutes=5),
