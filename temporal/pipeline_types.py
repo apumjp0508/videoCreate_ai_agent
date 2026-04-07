@@ -91,6 +91,7 @@ class YoutubePublishWorkflowInput:
     oauth_record_id: int
     youtube_channel_id: str
     publish_mode: str = "private"
+    prompt_id: int = 0   # メタ情報生成で使用する動画生成プロンプトの ID
     # title / description / tags / thumbnail_url は fetch_publish_settings Activity が取得する
 
 

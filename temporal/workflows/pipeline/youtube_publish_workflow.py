@@ -20,6 +20,20 @@ from datetime import timedelta
 from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
+    from temporal.activities.video_generation.interfaces import (
+        FetchRequestDefinitionInput,
+        fetch_request_definition,
+    )
+    from temporal.activities.video_metadata.interfaces import (
+        AnalyzeVideoContentInput,
+        GenerateVideoMetadataInput,
+        analyze_video_content,
+        generate_video_metadata,
+    )
+    from temporal.activities.thumbnail_generation.interfaces import (
+        GenerateThumbnailInput,
+        generate_thumbnail,
+    )
     from temporal.activities.youtube_publish.interfaces import (
         ApplyPublishSettingsInput,
         BuildUploadRequestInput,
@@ -52,15 +66,19 @@ class YoutubePublishWorkflow:
     YouTube 投稿子 Workflow。
 
     Activity の呼び出し順:
-      1. fetch_youtube_account   ─ YouTubeアカウント情報取得
-      2. fetch_oauth_token       ─ OAuthトークン取得
-      3. refresh_access_token    ─ 期限切れなら更新（条件付き）
-      4. fetch_publish_settings  ─ 投稿設定取得
-      5. build_upload_request    ─ アップロード要求データ作成
-      6. upload_video_to_youtube ─ YouTube動画アップロード実行
-      7. set_thumbnail           ─ サムネイル設定（thumbnail_url がある場合のみ）
-      8. apply_publish_settings  ─ 公開設定反映（任意）
-      9. save_publish_result     ─ 投稿結果保存
+      1.  fetch_youtube_account   ─ YouTubeアカウント情報取得
+      2.  fetch_oauth_token       ─ OAuthトークン取得
+      3.  refresh_access_token    ─ 期限切れなら更新（条件付き）
+      4a. fetch_request_definition ─ プロンプトテキスト取得
+      4b. analyze_video_content   ─ 動画を外部AIに送信して要約取得
+      4c. generate_video_metadata ─ 要約+プロンプトからタイトル/説明/タグ生成
+      4d. generate_thumbnail      ─ 要約+タイトルからサムネイル画像生成
+      4.  fetch_publish_settings  ─ 投稿設定取得（AI生成メタ情報でオーバーライド）
+      5.  build_upload_request    ─ アップロード要求データ作成
+      6.  upload_video_to_youtube ─ YouTube動画アップロード実行
+      7.  set_thumbnail           ─ サムネイル設定（生成された thumbnail_url がある場合のみ）
+      8.  apply_publish_settings  ─ 公開設定反映（任意）
+      9.  save_publish_result     ─ 投稿結果保存
     """
 
     @workflow.run
@@ -108,12 +126,68 @@ class YoutubePublishWorkflow:
             access_token = refreshed.access_token
             workflow.logger.info("refresh_access_token done  job_id=%s", input.job_id)
 
-        # ── Step 4: 投稿設定取得 ───────────────────────────────────
+        # ── Step 4a: プロンプトテキスト取得 ───────────────────────
+        request_def = await workflow.execute_activity(
+            fetch_request_definition,
+            FetchRequestDefinitionInput(
+                job_id=input.job_id,
+                prompt_id=input.prompt_id,
+            ),
+            start_to_close_timeout=timedelta(minutes=2),
+        )
+        workflow.logger.info("fetch_request_definition done  job_id=%s  prompt_id=%s", input.job_id, input.prompt_id)
+
+        # ── Step 4b: 動画コンテンツ解析（外部 AI） ────────────────
+        video_analysis = await workflow.execute_activity(
+            analyze_video_content,
+            AnalyzeVideoContentInput(
+                job_id=input.job_id,
+                video_url=input.video_url,
+            ),
+            start_to_close_timeout=timedelta(minutes=10),
+        )
+        workflow.logger.info("analyze_video_content done  job_id=%s", input.job_id)
+
+        # ── Step 4c: 動画メタ情報生成（外部 AI） ──────────────────
+        video_metadata = await workflow.execute_activity(
+            generate_video_metadata,
+            GenerateVideoMetadataInput(
+                job_id=input.job_id,
+                video_summary=video_analysis.summary,
+                prompt_text=request_def.prompt_text,
+            ),
+            start_to_close_timeout=timedelta(minutes=5),
+        )
+        workflow.logger.info(
+            "generate_video_metadata done  job_id=%s  title=%s",
+            input.job_id, video_metadata.title,
+        )
+
+        # ── Step 4d: サムネイル生成（外部 AI） ────────────────────
+        thumbnail_result = await workflow.execute_activity(
+            generate_thumbnail,
+            GenerateThumbnailInput(
+                job_id=input.job_id,
+                video_url=input.video_url,
+                title=video_metadata.title,
+                video_summary=video_analysis.summary,
+            ),
+            start_to_close_timeout=timedelta(minutes=10),
+        )
+        workflow.logger.info(
+            "generate_thumbnail done  job_id=%s  thumbnail_url=%s",
+            input.job_id, thumbnail_result.thumbnail_url,
+        )
+
+        # ── Step 4: 投稿設定取得（AI 生成メタ情報をオーバーライドとして渡す） ──
         publish_settings = await workflow.execute_activity(
             fetch_publish_settings,
             FetchPublishSettingsInput(
                 job_id=input.job_id,
                 user_id=input.user_id,
+                title_override=video_metadata.title,
+                description_override=video_metadata.description,
+                tags_override=video_metadata.tags,
                 publish_mode_override=input.publish_mode,
             ),
             start_to_close_timeout=timedelta(minutes=2),
@@ -153,15 +227,15 @@ class YoutubePublishWorkflow:
             input.job_id, upload_result.youtube_video_id,
         )
 
-        # ── Step 7: サムネイル設定（thumbnail_url がある場合のみ） ──
-        if input.thumbnail_url:
+        # ── Step 7: サムネイル設定（generate_thumbnail で生成された URL がある場合のみ） ──
+        if thumbnail_result.thumbnail_url:
             await workflow.execute_activity(
                 set_thumbnail,
                 SetThumbnailInput(
                     job_id=input.job_id,
                     youtube_video_id=upload_result.youtube_video_id,
                     access_token=access_token,
-                    thumbnail_url=input.thumbnail_url,
+                    thumbnail_url=thumbnail_result.thumbnail_url,
                 ),
                 start_to_close_timeout=timedelta(minutes=5),
             )

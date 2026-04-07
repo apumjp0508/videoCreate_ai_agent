@@ -19,6 +19,13 @@ VideoPipelineWorkflow 用 Worker エントリポイント。
     - dummy_poll_generation_status
     - dummy_fetch_generated_video
 
+  Activities  ─ video_metadata:
+    - dummy_analyze_video_content
+    - dummy_generate_video_metadata
+
+  Activities  ─ thumbnail_generation:
+    - dummy_generate_thumbnail
+
   Activities  ─ youtube_publish:
     - dummy_fetch_youtube_account
     - dummy_fetch_oauth_token
@@ -63,6 +70,13 @@ from temporal.activities.video_generation.dummy import (  # noqa: E402
     dummy_poll_generation_status,
     dummy_submit_ai_request,
 )
+from temporal.activities.video_metadata.dummy import (  # noqa: E402
+    dummy_analyze_video_content,
+    dummy_generate_video_metadata,
+)
+from temporal.activities.thumbnail_generation.dummy import (  # noqa: E402
+    dummy_generate_thumbnail,
+)
 from temporal.activities.youtube_publish.dummy import (  # noqa: E402
     dummy_apply_publish_settings,
     dummy_build_upload_request,
@@ -99,6 +113,15 @@ VIDEO_GENERATION_ACTIVITIES = [
     dummy_fetch_generated_video,
 ]
 
+VIDEO_METADATA_ACTIVITIES = [
+    dummy_analyze_video_content,
+    dummy_generate_video_metadata,
+]
+
+THUMBNAIL_GENERATION_ACTIVITIES = [
+    dummy_generate_thumbnail,
+]
+
 YOUTUBE_PUBLISH_ACTIVITIES = [
     dummy_fetch_youtube_account,
     dummy_fetch_oauth_token,
@@ -125,6 +148,8 @@ async def main() -> None:
         ],
         activities=[
             *VIDEO_GENERATION_ACTIVITIES,
+            *VIDEO_METADATA_ACTIVITIES,
+            *THUMBNAIL_GENERATION_ACTIVITIES,
             *YOUTUBE_PUBLISH_ACTIVITIES,
         ],
     ):
