@@ -23,8 +23,8 @@ VideoPipelineWorkflow 用 Worker エントリポイント。
     - analyze_video_content    ← Dummy（差し替え必要）
     - generate_video_metadata  ← Dummy（差し替え必要）
 
-  Activities  ─ thumbnail_generation（Dummy: AI プロバイダー固有）:
-    - generate_thumbnail       ← Dummy（差し替え必要）
+  Activities  ─ thumbnail_generation（OpenAI GPT-4o Vision）:
+    - generate_thumbnail       ← ffmpeg スナップショット + GPT-4o Vision スコアリング
 
   Activities  ─ youtube_publish（DjangoYoutubePublishService + YoutubeDataApiService）:
     - fetch_youtube_account    ← Django ORM
@@ -93,11 +93,16 @@ from temporal.activities.video_metadata.openai_service import (  # noqa: E402
 vm_dummy._service = OpenAIVideoMetadataService()
 
 # ─────────────────────────────────────────────────────────────
-# thumbnail_generation: Dummy のまま（AI プロバイダー固有）
+# thumbnail_generation: OpenAI GPT-4o Vision 実装に差し替え
 # ─────────────────────────────────────────────────────────────
+from temporal.activities.thumbnail_generation import dummy as th_dummy  # noqa: E402
 from temporal.activities.thumbnail_generation.dummy import (  # noqa: E402
     dummy_generate_thumbnail,
 )
+from temporal.activities.thumbnail_generation.openai_service import (  # noqa: E402
+    OpenAIThumbnailService,
+)
+th_dummy._service = OpenAIThumbnailService()
 
 # ─────────────────────────────────────────────────────────────
 # youtube_publish: ダミー Activity 関数のインポート
