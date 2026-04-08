@@ -46,15 +46,16 @@ class JobStep(models.TextChoices):
 
 
 class EventType(models.TextChoices):
-    JOB_CREATED             = 'JOB_CREATED',             'Job作成'
-    WORKFLOW_STARTED        = 'WORKFLOW_STARTED',         'Workflow開始'
-    AI_REQUEST_SENT         = 'AI_REQUEST_SENT',          'AIリクエスト送信'
-    AI_RENDER_COMPLETED     = 'AI_RENDER_COMPLETED',      'AI生成完了'
-    YOUTUBE_UPLOAD_STARTED  = 'YOUTUBE_UPLOAD_STARTED',   'YouTubeアップロード開始'
-    YOUTUBE_UPLOAD_COMPLETED = 'YOUTUBE_UPLOAD_COMPLETED', 'YouTubeアップロード完了'
-    JOB_COMPLETED           = 'JOB_COMPLETED',            'Job完了'
-    JOB_FAILED              = 'JOB_FAILED',               'Job失敗'
-    JOB_CANCELLED           = 'JOB_CANCELLED',            'Jobキャンセル'
+    JOB_CREATED              = 'JOB_CREATED',              'Job作成'
+    WORKFLOW_STARTED         = 'WORKFLOW_STARTED',          'Workflow開始'
+    STEP_UPDATED             = 'STEP_UPDATED',              'ステップ更新'
+    AI_REQUEST_SENT          = 'AI_REQUEST_SENT',           'AIリクエスト送信'
+    AI_RENDER_COMPLETED      = 'AI_RENDER_COMPLETED',       'AI生成完了'
+    YOUTUBE_UPLOAD_STARTED   = 'YOUTUBE_UPLOAD_STARTED',    'YouTubeアップロード開始'
+    YOUTUBE_UPLOAD_COMPLETED = 'YOUTUBE_UPLOAD_COMPLETED',  'YouTubeアップロード完了'
+    JOB_COMPLETED            = 'JOB_COMPLETED',             'Job完了'
+    JOB_FAILED               = 'JOB_FAILED',                'Job失敗'
+    JOB_CANCELLED            = 'JOB_CANCELLED',             'Jobキャンセル'
 
 
 class AssetRole(models.TextChoices):

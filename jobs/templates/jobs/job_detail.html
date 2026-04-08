@@ -1,0 +1,517 @@
+{% extends "accounts/base.html" %}
+{% block title %}Job #{{ job.id }} 詳細 — VideoCreate AI{% endblock %}
+
+{% block content %}
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    min-height:100vh; background:#0a0c14;
+    background-image:
+      radial-gradient(ellipse 70% 50% at 15% 5%,  rgba(99,55,255,0.15) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 85% 90%, rgba(0,200,255,0.10) 0%, transparent 50%);
+    font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif; color:#e2e8f0;
+  }
+
+  /* Header */
+  .top-header {
+    position:sticky; top:0; z-index:100;
+    background:rgba(10,12,20,0.85); backdrop-filter:blur(16px);
+    border-bottom:1px solid rgba(255,255,255,0.07);
+    padding:0 2rem; height:60px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .header-brand { display:flex; align-items:center; gap:0.6rem; text-decoration:none; }
+  .header-brand .logo-icon {
+    width:30px; height:30px; border-radius:7px;
+    background:linear-gradient(135deg,#6337ff,#00c8ff);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .header-brand .logo-icon svg { width:16px; height:16px; fill:#fff; }
+  .header-brand .logo-text {
+    font-size:0.95rem; font-weight:700;
+    background:linear-gradient(90deg,#a78bfa,#38bdf8);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  }
+  .header-right { display:flex; align-items:center; gap:1rem; }
+  .user-badge { display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; color:#94a3b8; }
+  .user-avatar {
+    width:28px; height:28px; border-radius:50%;
+    background:linear-gradient(135deg,#6337ff,#00c8ff);
+    display:flex; align-items:center; justify-content:center;
+    font-size:0.7rem; font-weight:700; color:#fff;
+  }
+  .btn-logout {
+    padding:0.4rem 0.9rem; font-size:0.78rem; font-weight:600;
+    color:#94a3b8; background:rgba(255,255,255,0.05);
+    border:1px solid rgba(255,255,255,0.1); border-radius:8px; cursor:pointer;
+    transition:background 0.2s,color 0.2s;
+  }
+  .btn-logout:hover { background:rgba(255,255,255,0.09); color:#e2e8f0; }
+
+  /* Page body */
+  .page-body { max-width:760px; margin:0 auto; padding:2.5rem 2rem 4rem; }
+
+  /* Breadcrumb */
+  .breadcrumb { display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; color:#475569; margin-bottom:1.5rem; }
+  .breadcrumb a { color:#6337ff; text-decoration:none; }
+  .breadcrumb a:hover { text-decoration:underline; }
+
+  /* Job header */
+  .job-header {
+    background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07);
+    border-radius:16px; padding:1.75rem 2rem; margin-bottom:1.5rem;
+  }
+  .job-header-top { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+  .job-id-label { font-size:1.3rem; font-weight:800; color:#f1f5f9; }
+  .job-id-label span { color:#6337ff; }
+
+  /* Status badge */
+  .status-badge {
+    display:inline-flex; align-items:center; gap:0.4rem;
+    padding:0.35rem 0.85rem; border-radius:20px;
+    font-size:0.8rem; font-weight:700; letter-spacing:0.04em;
+  }
+  .status-badge .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .badge-queued    { background:rgba(148,163,184,0.12); color:#94a3b8; border:1px solid rgba(148,163,184,0.2); }
+  .badge-queued    .dot { background:#94a3b8; }
+  .badge-generating { background:rgba(99,55,255,0.15); color:#a78bfa; border:1px solid rgba(99,55,255,0.3); }
+  .badge-generating .dot { background:#a78bfa; animation:pulse 1.2s infinite; }
+  .badge-generated  { background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.25); }
+  .badge-generated  .dot { background:#38bdf8; }
+  .badge-publishing { background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3); }
+  .badge-publishing .dot { background:#c084fc; animation:pulse 1.2s infinite; }
+  .badge-completed  { background:rgba(34,197,94,0.12); color:#4ade80; border:1px solid rgba(34,197,94,0.25); }
+  .badge-completed  .dot { background:#4ade80; }
+  .badge-failed     { background:rgba(239,68,68,0.12); color:#f87171; border:1px solid rgba(239,68,68,0.25); }
+  .badge-failed     .dot { background:#f87171; }
+  .badge-cancelled  { background:rgba(100,116,139,0.10); color:#64748b; border:1px solid rgba(100,116,139,0.2); }
+  .badge-cancelled  .dot { background:#64748b; }
+
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.4;transform:scale(0.7);} }
+
+  /* Meta grid */
+  .meta-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:1rem; margin-top:1.25rem; }
+  .meta-item .meta-label { font-size:0.72rem; color:#475569; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:0.3rem; }
+  .meta-item .meta-value { font-size:0.88rem; color:#cbd5e1; }
+  .meta-item .meta-value a { color:#38bdf8; text-decoration:none; }
+  .meta-item .meta-value a:hover { text-decoration:underline; }
+
+  /* Current step */
+  .current-step-box {
+    display:flex; align-items:center; gap:0.75rem;
+    background:rgba(99,55,255,0.08); border:1px solid rgba(99,55,255,0.2);
+    border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.5rem;
+  }
+  .step-spinner {
+    width:20px; height:20px; border-radius:50%;
+    border:2px solid rgba(167,139,250,0.2); border-top-color:#a78bfa;
+    animation:spin 0.8s linear infinite; flex-shrink:0;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .current-step-box .step-text { font-size:0.9rem; color:#a78bfa; font-weight:600; }
+  .current-step-box .step-sub  { font-size:0.78rem; color:#6337ff; margin-top:0.15rem; }
+
+  /* Step progress */
+  .section-title { font-size:0.72rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#475569; margin-bottom:0.75rem; }
+
+  .steps-track {
+    display:flex; align-items:flex-start; gap:0; margin-bottom:1.75rem; overflow-x:auto; padding-bottom:0.5rem;
+  }
+  .step-item {
+    display:flex; flex-direction:column; align-items:center; flex:1; min-width:70px; position:relative;
+  }
+  .step-item:not(:last-child)::after {
+    content:''; position:absolute; top:11px; left:calc(50% + 11px);
+    width:calc(100% - 22px); height:2px;
+    background:rgba(255,255,255,0.07);
+    z-index:0;
+  }
+  .step-item.done:not(:last-child)::after  { background:rgba(34,197,94,0.4); }
+  .step-item.active:not(:last-child)::after { background:rgba(99,55,255,0.3); }
+
+  .step-circle {
+    width:22px; height:22px; border-radius:50%; z-index:1; flex-shrink:0;
+    background:rgba(255,255,255,0.05); border:2px solid rgba(255,255,255,0.1);
+    display:flex; align-items:center; justify-content:center;
+    font-size:0.6rem; color:#475569;
+  }
+  .step-item.done   .step-circle { background:rgba(34,197,94,0.2); border-color:rgba(34,197,94,0.5); color:#4ade80; }
+  .step-item.active .step-circle { background:rgba(99,55,255,0.25); border-color:#6337ff; animation:pulse 1.2s infinite; }
+  .step-item.failed .step-circle { background:rgba(239,68,68,0.2); border-color:rgba(239,68,68,0.4); color:#f87171; }
+
+  .step-name { font-size:0.65rem; color:#475569; text-align:center; margin-top:0.4rem; line-height:1.3; }
+  .step-item.done   .step-name { color:#4ade80; }
+  .step-item.active .step-name { color:#a78bfa; }
+  .step-item.failed .step-name { color:#f87171; }
+
+  /* Event timeline */
+  .timeline { display:flex; flex-direction:column; gap:0; }
+  .timeline-item {
+    display:flex; gap:1rem; padding:0.85rem 0;
+    border-bottom:1px solid rgba(255,255,255,0.04);
+  }
+  .timeline-item:last-child { border-bottom:none; }
+  .tl-dot-wrap { display:flex; flex-direction:column; align-items:center; flex-shrink:0; width:16px; padding-top:0.15rem; }
+  .tl-dot {
+    width:10px; height:10px; border-radius:50%; flex-shrink:0;
+    background:rgba(99,55,255,0.4); border:2px solid rgba(99,55,255,0.6);
+  }
+  .tl-dot.dot-completed { background:rgba(34,197,94,0.4); border-color:rgba(34,197,94,0.6); }
+  .tl-dot.dot-failed    { background:rgba(239,68,68,0.4); border-color:rgba(239,68,68,0.6); }
+  .tl-dot.dot-started   { background:rgba(56,189,248,0.4); border-color:rgba(56,189,248,0.6); }
+  .tl-line { width:1px; flex:1; background:rgba(255,255,255,0.05); margin-top:4px; }
+  .tl-body { flex:1; min-width:0; }
+  .tl-event-type { font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.2rem; }
+  .tl-message    { font-size:0.85rem; color:#cbd5e1; margin-bottom:0.2rem; }
+  .tl-time       { font-size:0.72rem; color:#475569; }
+  .tl-step       { font-size:0.72rem; color:#6337ff; background:rgba(99,55,255,0.08); padding:0.1rem 0.45rem; border-radius:5px; display:inline-block; margin-top:0.25rem; }
+
+  /* Error box */
+  .error-box {
+    background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25);
+    border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.5rem;
+  }
+  .error-box .err-title { font-size:0.82rem; font-weight:700; color:#f87171; margin-bottom:0.4rem; }
+  .error-box .err-body  { font-size:0.82rem; color:#fca5a5; line-height:1.6; }
+
+  /* YouTube result */
+  .yt-result {
+    background:rgba(34,197,94,0.06); border:1px solid rgba(34,197,94,0.2);
+    border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.5rem;
+    display:flex; align-items:center; gap:1rem; flex-wrap:wrap;
+  }
+  .yt-result .yt-icon { font-size:1.5rem; flex-shrink:0; }
+  .yt-result .yt-info { flex:1; min-width:0; }
+  .yt-result .yt-label { font-size:0.75rem; color:#4ade80; font-weight:700; margin-bottom:0.2rem; }
+  .yt-result .yt-url   { font-size:0.85rem; color:#38bdf8; word-break:break-all; }
+  .yt-result .yt-url a { color:#38bdf8; text-decoration:none; }
+  .yt-result .yt-url a:hover { text-decoration:underline; }
+  .btn-yt {
+    padding:0.5rem 1.1rem; font-size:0.82rem; font-weight:700;
+    color:#fff; background:rgba(239,68,68,0.75);
+    border:none; border-radius:9px; text-decoration:none;
+    cursor:pointer; transition:background 0.2s; white-space:nowrap;
+    flex-shrink:0;
+  }
+  .btn-yt:hover { background:rgba(239,68,68,0.9); }
+
+  /* Section card */
+  .section-card {
+    background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.06);
+    border-radius:14px; padding:1.25rem 1.5rem; margin-bottom:1.5rem;
+  }
+
+  /* Auto-refresh indicator */
+  .refresh-chip {
+    display:inline-flex; align-items:center; gap:0.35rem;
+    font-size:0.72rem; color:#6337ff; background:rgba(99,55,255,0.08);
+    border:1px solid rgba(99,55,255,0.2); border-radius:20px;
+    padding:0.2rem 0.6rem; margin-bottom:1rem;
+  }
+  .refresh-chip .r-dot { width:6px; height:6px; border-radius:50%; background:#6337ff; animation:pulse 1.2s infinite; }
+
+  @media (max-width:640px) {
+    .top-header { padding:0 1rem; }
+    .page-body  { padding:1.75rem 1rem 3rem; }
+    .meta-grid  { grid-template-columns:1fr 1fr; }
+    .steps-track { gap:0; }
+  }
+</style>
+
+<!-- Header -->
+<header class="top-header">
+  <a href="{% url 'accounts:dashboard' %}" class="header-brand">
+    <span class="logo-icon"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
+    <span class="logo-text">VideoCreate AI</span>
+  </a>
+  <div class="header-right">
+    <div class="user-badge">
+      <span class="user-avatar">{{ user.email|first|upper }}</span>
+      <span>{{ user.email }}</span>
+    </div>
+    <form method="post" action="{% url 'accounts:logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn-logout">ログアウト</button>
+    </form>
+  </div>
+</header>
+
+<div class="page-body">
+  <!-- Breadcrumb -->
+  <nav class="breadcrumb">
+    <a href="{% url 'accounts:dashboard' %}">ダッシュボード</a>
+    <span>/</span>
+    <a href="{% url 'jobs:job_history' %}">生成履歴</a>
+    <span>/</span>
+    <span>Job #{{ job.id }}</span>
+  </nav>
+
+  <!-- Auto-refresh chip (visible when active) -->
+  {% if job.status == 'queued' or job.status == 'generating' or job.status == 'generated' or job.status == 'publishing' %}
+  <div class="refresh-chip" id="refresh-chip">
+    <span class="r-dot"></span>
+    <span>5秒ごとに自動更新中</span>
+  </div>
+  {% endif %}
+
+  <!-- Job header -->
+  <div class="job-header" id="job-header">
+    <div class="job-header-top">
+      <h1 class="job-id-label">Job <span>#{{ job.id }}</span></h1>
+      <span class="status-badge badge-{{ job.status }}" id="status-badge">
+        <span class="dot"></span>
+        <span class="badge-text" id="badge-text">{{ job.get_status_display }}</span>
+      </span>
+    </div>
+    <div class="meta-grid">
+      <div class="meta-item">
+        <p class="meta-label">作成日時</p>
+        <p class="meta-value">{{ job.created_at|date:"Y/m/d H:i:s" }}</p>
+      </div>
+      <div class="meta-item">
+        <p class="meta-label">開始日時</p>
+        <p class="meta-value">{% if job.started_at %}{{ job.started_at|date:"Y/m/d H:i:s" }}{% else %}—{% endif %}</p>
+      </div>
+      <div class="meta-item">
+        <p class="meta-label">完了日時</p>
+        <p class="meta-value" id="completed-at">{% if job.completed_at %}{{ job.completed_at|date:"Y/m/d H:i:s" }}{% else %}—{% endif %}</p>
+      </div>
+      <div class="meta-item">
+        <p class="meta-label">Workflow ID</p>
+        <p class="meta-value" style="font-size:0.78rem;word-break:break-all;">
+          {{ job.temporal_workflow_id|default:"—" }}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 現在のステップ（処理中のみ） -->
+  {% if job.status == 'queued' or job.status == 'generating' or job.status == 'generated' or job.status == 'publishing' %}
+  <div class="current-step-box" id="current-step-box">
+    <div class="step-spinner"></div>
+    <div>
+      <p class="step-text" id="step-text">
+        {% if job.current_step %}{{ job.get_current_step_display }}{% else %}処理を準備中…{% endif %}
+      </p>
+      <p class="step-sub" id="step-sub">
+        {% if job.current_step %}{{ job.current_step }}{% endif %}
+      </p>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- YouTube投稿結果 -->
+  {% if job.youtube_video_url %}
+  <div class="yt-result" id="yt-result">
+    <span class="yt-icon">🎬</span>
+    <div class="yt-info">
+      <p class="yt-label">YouTube 投稿完了</p>
+      <p class="yt-url"><a href="{{ job.youtube_video_url }}" target="_blank">{{ job.youtube_video_url }}</a></p>
+    </div>
+    <a href="{{ job.youtube_video_url }}" target="_blank" class="btn-yt">YouTube で見る</a>
+  </div>
+  {% else %}
+  <div class="yt-result" id="yt-result" style="display:none;">
+    <span class="yt-icon">🎬</span>
+    <div class="yt-info">
+      <p class="yt-label">YouTube 投稿完了</p>
+      <p class="yt-url" id="yt-url-text"><a href="#" target="_blank" id="yt-url-link"></a></p>
+    </div>
+    <a href="#" target="_blank" class="btn-yt" id="yt-url-btn">YouTube で見る</a>
+  </div>
+  {% endif %}
+
+  <!-- エラー情報 -->
+  {% if job.error_code %}
+  <div class="error-box">
+    <p class="err-title">エラー: {{ job.error_code }}</p>
+    <p class="err-body">{{ job.error_message|default:"詳細なエラー情報はありません。" }}</p>
+  </div>
+  {% else %}
+  <div class="error-box" id="error-box" style="display:none;">
+    <p class="err-title" id="err-code"></p>
+    <p class="err-body" id="err-msg"></p>
+  </div>
+  {% endif %}
+
+  <!-- ステップ進捗 -->
+  <p class="section-title">処理ステップ</p>
+  {% with cs=job.current_step status=job.status %}
+  <div class="steps-track">
+    {% for step_key, step_name in steps %}
+    <div class="step-item
+      {% if status == 'completed' %}done
+      {% elif status == 'failed' and cs == step_key %}failed
+      {% elif cs == step_key %}active
+      {% elif cs and step_key < cs %}done
+      {% endif %}"
+      data-step="{{ step_key }}">
+      <div class="step-circle">✓</div>
+      <p class="step-name">{{ step_name }}</p>
+    </div>
+    {% endfor %}
+    <!-- 完了 -->
+    <div class="step-item {% if status == 'completed' %}done{% endif %}" data-step="DONE">
+      <div class="step-circle">🎉</div>
+      <p class="step-name">完了</p>
+    </div>
+  </div>
+  {% endwith %}
+
+  <!-- イベントログ -->
+  <p class="section-title">イベントログ</p>
+  <div class="section-card">
+    <div class="timeline" id="event-timeline">
+      {% for event in events %}
+      <div class="timeline-item">
+        <div class="tl-dot-wrap">
+          <div class="tl-dot
+            {% if event.event_type == 'JOB_COMPLETED' %}dot-completed
+            {% elif event.event_type == 'JOB_FAILED' %}dot-failed
+            {% elif event.event_type == 'WORKFLOW_STARTED' or event.event_type == 'YOUTUBE_UPLOAD_STARTED' %}dot-started
+            {% endif %}
+          "></div>
+          <div class="tl-line"></div>
+        </div>
+        <div class="tl-body">
+          <p class="tl-event-type">{{ event.event_type }}</p>
+          <p class="tl-message">{{ event.message }}</p>
+          {% if event.step_name %}
+            <span class="tl-step">{{ event.step_name }}</span>
+          {% endif %}
+          <p class="tl-time">{{ event.created_at|date:"Y/m/d H:i:s" }}</p>
+        </div>
+      </div>
+      {% empty %}
+      <p style="color:#475569;font-size:0.85rem;">イベントはまだ記録されていません。</p>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  const ACTIVE_STATUSES = new Set(['queued', 'generating', 'generated', 'publishing']);
+  const JOB_ID = {{ job.id }};
+  const STATUS_LABELS = {
+    queued:'待機中', generating:'動画生成中', generated:'動画生成完了',
+    publishing:'YouTube投稿中', completed:'完了', failed:'失敗', cancelled:'キャンセル',
+  };
+
+  let isActive = ACTIVE_STATUSES.has('{{ job.status }}');
+  if (!isActive) return;
+
+  // ── DOM refs ─────────────────────────────────────────────────
+  const badgeEl      = document.getElementById('status-badge');
+  const badgeText    = document.getElementById('badge-text');
+  const stepBox      = document.getElementById('current-step-box');
+  const stepText     = document.getElementById('step-text');
+  const stepSub      = document.getElementById('step-sub');
+  const ytResult     = document.getElementById('yt-result');
+  const ytUrlLink    = document.getElementById('yt-url-link');
+  const ytUrlBtn     = document.getElementById('yt-url-btn');
+  const errorBox     = document.getElementById('error-box');
+  const errCode      = document.getElementById('err-code');
+  const errMsg       = document.getElementById('err-msg');
+  const refreshChip  = document.getElementById('refresh-chip');
+  const timeline     = document.getElementById('event-timeline');
+
+  function applyStatus(data) {
+    const status = data.status;
+
+    // バッジ更新
+    badgeEl.className = 'status-badge badge-' + status;
+    badgeText.textContent = STATUS_LABELS[status] || status;
+
+    // ステップ表示
+    if (data.current_step && stepBox) {
+      stepText.textContent = data.current_step_display || data.current_step;
+      stepSub.textContent  = data.current_step;
+    }
+
+    // ステップ進捗バー更新
+    updateStepTrack(data.current_step, status);
+
+    // 完了: YouTube リンク表示
+    if (data.youtube_video_url && ytResult) {
+      ytResult.style.display = '';
+      if (ytUrlLink) { ytUrlLink.href = data.youtube_video_url; ytUrlLink.textContent = data.youtube_video_url; }
+      if (ytUrlBtn)  { ytUrlBtn.href = data.youtube_video_url; }
+    }
+
+    // エラー
+    if (data.error_code && errorBox) {
+      errorBox.style.display = '';
+      if (errCode) errCode.textContent = 'エラー: ' + data.error_code;
+      if (errMsg)  errMsg.textContent  = data.error_message || '';
+    }
+
+    // イベントログを最新に差し替え
+    if (data.events && data.events.length && timeline) {
+      renderTimeline(data.events);
+    }
+
+    // 処理終了時
+    if (!ACTIVE_STATUSES.has(status)) {
+      isActive = false;
+      if (stepBox) stepBox.style.display = 'none';
+      if (refreshChip) refreshChip.style.display = 'none';
+    }
+  }
+
+  function updateStepTrack(currentStep, status) {
+    const items = document.querySelectorAll('.step-item[data-step]');
+    const stepOrder = ['FETCH_ASSETS','FETCH_AI_CONFIG','CALL_AI','WAIT_AI_RESULT','FETCH_VIDEO','FETCH_OAUTH','UPLOAD_YOUTUBE','SAVE_RESULT'];
+    const currentIdx = stepOrder.indexOf(currentStep);
+
+    items.forEach(el => {
+      const step = el.dataset.step;
+      if (step === 'DONE') {
+        el.className = 'step-item' + (status === 'completed' ? ' done' : '');
+        return;
+      }
+      const idx = stepOrder.indexOf(step);
+      el.className = 'step-item';
+      if (status === 'completed') { el.classList.add('done'); }
+      else if (status === 'failed' && step === currentStep) { el.classList.add('failed'); }
+      else if (step === currentStep) { el.classList.add('active'); }
+      else if (currentIdx >= 0 && idx < currentIdx) { el.classList.add('done'); }
+    });
+  }
+
+  const EVENT_DOT_CLASS = {
+    JOB_COMPLETED: 'dot-completed', JOB_FAILED: 'dot-failed',
+    WORKFLOW_STARTED: 'dot-started', YOUTUBE_UPLOAD_STARTED: 'dot-started',
+  };
+
+  function renderTimeline(events) {
+    timeline.innerHTML = events.map((e, i) => `
+      <div class="timeline-item">
+        <div class="tl-dot-wrap">
+          <div class="tl-dot ${EVENT_DOT_CLASS[e.event_type] || ''}"></div>
+          ${i < events.length - 1 ? '<div class="tl-line"></div>' : ''}
+        </div>
+        <div class="tl-body">
+          <p class="tl-event-type">${e.event_type}</p>
+          <p class="tl-message">${e.message || ''}</p>
+          ${e.step_name ? `<span class="tl-step">${e.step_name}</span>` : ''}
+          <p class="tl-time">${e.created_at ? new Date(e.created_at).toLocaleString('ja-JP') : ''}</p>
+        </div>
+      </div>`
+    ).join('') || '<p style="color:#475569;font-size:0.85rem;">イベントはまだ記録されていません。</p>';
+  }
+
+  const timer = setInterval(async () => {
+    if (!isActive) { clearInterval(timer); return; }
+    try {
+      const res  = await fetch('/api/jobs/' + JOB_ID + '/status/');
+      if (!res.ok) return;
+      const data = await res.json();
+      applyStatus(data);
+      if (!isActive) clearInterval(timer);
+    } catch (e) { /* network error — retry next tick */ }
+  }, 5000);
+})();
+</script>
+{% endblock %}

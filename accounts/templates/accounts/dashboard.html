@@ -403,7 +403,7 @@
         <p class="nav-card-desc">プロンプトを入力してAI動画を生成</p>
       </div>
     </a>
-    <a href="#" class="nav-card">
+    <a href="{% url 'jobs:job_history' %}" class="nav-card">
       <span class="nav-card-icon teal">
         <svg viewBox="0 0 24 24">
           <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/><path d="M12 6v6l4 2"/>
@@ -411,7 +411,7 @@
       </span>
       <div class="nav-card-text">
         <p class="nav-card-title">生成履歴</p>
-        <p class="nav-card-desc">過去に作成した動画の一覧・ダウンロード</p>
+        <p class="nav-card-desc">過去に作成した動画の進捗・状況確認</p>
       </div>
     </a>
     <a href="{% url 'video_ai:provider_list' %}" class="nav-card">

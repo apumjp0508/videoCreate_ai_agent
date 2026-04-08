@@ -23,6 +23,9 @@ VideoPipelineWorkflow 用 Worker エントリポイント。
     - analyze_video_content    ← Dummy（差し替え必要）
     - generate_video_metadata  ← Dummy（差し替え必要）
 
+  Activities  ─ job_progress（Django ORM）:
+    - update_job_progress      ← VideoJob.current_step + VideoJobEvent 更新
+
   Activities  ─ thumbnail_generation（OpenAI GPT-4o Vision）:
     - generate_thumbnail       ← ffmpeg スナップショット + GPT-4o Vision スコアリング
 
@@ -57,6 +60,18 @@ django.setup()
 
 from django.conf import settings  # noqa: E402
 from temporalio.worker import Worker  # noqa: E402
+
+# ─────────────────────────────────────────────────────────────
+# job_progress: Django 実装に差し替え（進捗・イベント記録）
+# ─────────────────────────────────────────────────────────────
+from temporal.activities.job_progress import dummy as jp_dummy  # noqa: E402
+from temporal.activities.job_progress.dummy import (  # noqa: E402
+    dummy_update_job_progress,
+)
+from temporal.activities.job_progress.django_service import (  # noqa: E402
+    DjangoJobProgressService,
+)
+jp_dummy._service = DjangoJobProgressService()
 
 # ─────────────────────────────────────────────────────────────
 # video_generation: ダミー Activity 関数のインポート
@@ -144,6 +159,10 @@ logger = logging.getLogger(__name__)
 # Activity リスト（追加・差し替えはここで行う）
 # ─────────────────────────────────────────────────────────────
 
+JOB_PROGRESS_ACTIVITIES = [
+    dummy_update_job_progress,   # Django 実装: current_step / VideoJobEvent 更新
+]
+
 VIDEO_GENERATION_ACTIVITIES = [
     dummy_fetch_materials,
     dummy_fetch_ai_config,
@@ -188,6 +207,7 @@ async def main() -> None:
             YoutubePublishWorkflow,
         ],
         activities=[
+            *JOB_PROGRESS_ACTIVITIES,
             *VIDEO_GENERATION_ACTIVITIES,
             *VIDEO_METADATA_ACTIVITIES,
             *THUMBNAIL_GENERATION_ACTIVITIES,

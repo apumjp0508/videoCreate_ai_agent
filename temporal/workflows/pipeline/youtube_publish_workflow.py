@@ -20,6 +20,10 @@ from datetime import timedelta
 from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
+    from temporal.activities.job_progress.interfaces import (
+        UpdateJobProgressInput,
+        update_job_progress,
+    )
     from temporal.activities.video_generation.interfaces import (
         FetchRequestDefinitionInput,
         fetch_request_definition,
@@ -212,6 +216,18 @@ class YoutubePublishWorkflow:
         workflow.logger.info("build_upload_request done  job_id=%s", input.job_id)
 
         # ── Step 6: YouTube動画アップロード実行 ────────────────────
+        # 進捗更新: YouTubeアップロード開始（status を publishing に遷移）
+        await workflow.execute_activity(
+            update_job_progress,
+            UpdateJobProgressInput(
+                job_id=input.job_id,
+                step="UPLOAD_YOUTUBE",
+                event_type="YOUTUBE_UPLOAD_STARTED",
+                message="YouTube へのアップロードを開始します",
+                status="publishing",
+            ),
+            start_to_close_timeout=timedelta(minutes=1),
+        )
         upload_result = await workflow.execute_activity(
             upload_video_to_youtube,
             UploadVideoToYoutubeInput(

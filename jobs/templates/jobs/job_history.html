@@ -1,0 +1,364 @@
+{% extends "accounts/base.html" %}
+{% block title %}生成履歴 — VideoCreate AI{% endblock %}
+
+{% block content %}
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: #0a0c14;
+    background-image:
+      radial-gradient(ellipse 70% 50% at 15% 5%,  rgba(99,55,255,0.15) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 85% 90%, rgba(0,200,255,0.10) 0%, transparent 50%);
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    color: #e2e8f0;
+  }
+
+  /* Header */
+  .top-header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,12,20,0.85); backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    padding: 0 2rem; height: 60px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header-brand { display:flex; align-items:center; gap:0.6rem; text-decoration:none; }
+  .header-brand .logo-icon {
+    width:30px; height:30px; border-radius:7px;
+    background: linear-gradient(135deg,#6337ff,#00c8ff);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .header-brand .logo-icon svg { width:16px; height:16px; fill:#fff; }
+  .header-brand .logo-text {
+    font-size:0.95rem; font-weight:700;
+    background: linear-gradient(90deg,#a78bfa,#38bdf8);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  }
+  .header-right { display:flex; align-items:center; gap:1rem; }
+  .user-badge { display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; color:#94a3b8; }
+  .user-avatar {
+    width:28px; height:28px; border-radius:50%;
+    background:linear-gradient(135deg,#6337ff,#00c8ff);
+    display:flex; align-items:center; justify-content:center;
+    font-size:0.7rem; font-weight:700; color:#fff;
+  }
+  .btn-logout {
+    padding:0.4rem 0.9rem; font-size:0.78rem; font-weight:600;
+    color:#94a3b8; background:rgba(255,255,255,0.05);
+    border:1px solid rgba(255,255,255,0.1); border-radius:8px;
+    cursor:pointer; transition:background 0.2s,color 0.2s;
+  }
+  .btn-logout:hover { background:rgba(255,255,255,0.09); color:#e2e8f0; }
+
+  /* Page body */
+  .page-body { max-width:1000px; margin:0 auto; padding:2.5rem 2rem 4rem; }
+
+  /* Breadcrumb */
+  .breadcrumb { display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; color:#475569; margin-bottom:1.5rem; }
+  .breadcrumb a { color:#6337ff; text-decoration:none; }
+  .breadcrumb a:hover { text-decoration:underline; }
+  .breadcrumb span { color:#475569; }
+
+  /* Page title */
+  .page-title { font-size:1.5rem; font-weight:800; color:#f1f5f9; margin-bottom:0.3rem; }
+  .page-sub { font-size:0.88rem; color:#94a3b8; margin-bottom:2rem; }
+
+  /* Empty state */
+  .empty-state {
+    text-align:center; padding:4rem 2rem;
+    background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06);
+    border-radius:16px;
+  }
+  .empty-state .empty-icon { font-size:2.5rem; margin-bottom:1rem; opacity:0.4; }
+  .empty-state p { color:#475569; font-size:0.9rem; margin-bottom:1.25rem; }
+  .btn-primary {
+    display:inline-block; padding:0.65rem 1.4rem;
+    background:linear-gradient(135deg,#6337ff,#3b82f6,#00c8ff);
+    color:#fff; font-size:0.85rem; font-weight:700;
+    border:none; border-radius:10px; text-decoration:none;
+    box-shadow:0 4px 18px rgba(99,55,255,0.35); cursor:pointer;
+    transition:opacity 0.2s;
+  }
+  .btn-primary:hover { opacity:0.9; }
+
+  /* Job list */
+  .job-list { display:flex; flex-direction:column; gap:0.75rem; }
+
+  /* Job card */
+  .job-card {
+    background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07);
+    border-radius:14px; padding:1.25rem 1.5rem;
+    display:flex; align-items:center; gap:1.25rem;
+    transition:background 0.2s, border-color 0.2s;
+  }
+  .job-card:hover { background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.12); }
+  .job-card.is-active { border-color:rgba(99,55,255,0.25); }
+
+  /* Status badge */
+  .status-badge {
+    display:inline-flex; align-items:center; gap:0.35rem;
+    padding:0.25rem 0.7rem; border-radius:20px;
+    font-size:0.72rem; font-weight:700; letter-spacing:0.04em;
+    white-space:nowrap; flex-shrink:0;
+  }
+  .status-badge .dot {
+    width:6px; height:6px; border-radius:50%; flex-shrink:0;
+  }
+  .badge-queued    { background:rgba(148,163,184,0.12); color:#94a3b8; border:1px solid rgba(148,163,184,0.2); }
+  .badge-queued    .dot { background:#94a3b8; }
+  .badge-generating { background:rgba(99,55,255,0.15); color:#a78bfa; border:1px solid rgba(99,55,255,0.3); }
+  .badge-generating .dot { background:#a78bfa; animation:pulse 1.2s infinite; }
+  .badge-generated  { background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.25); }
+  .badge-generated  .dot { background:#38bdf8; }
+  .badge-publishing { background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3); }
+  .badge-publishing .dot { background:#c084fc; animation:pulse 1.2s infinite; }
+  .badge-completed  { background:rgba(34,197,94,0.12); color:#4ade80; border:1px solid rgba(34,197,94,0.25); }
+  .badge-completed  .dot { background:#4ade80; }
+  .badge-failed     { background:rgba(239,68,68,0.12); color:#f87171; border:1px solid rgba(239,68,68,0.25); }
+  .badge-failed     .dot { background:#f87171; }
+  .badge-cancelled  { background:rgba(100,116,139,0.10); color:#64748b; border:1px solid rgba(100,116,139,0.2); }
+  .badge-cancelled  .dot { background:#64748b; }
+
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:0.4; transform:scale(0.7); }
+  }
+
+  /* Job info */
+  .job-info { flex:1; min-width:0; }
+  .job-title { font-size:0.9rem; font-weight:600; color:#e2e8f0; margin-bottom:0.25rem; }
+  .job-meta  { font-size:0.78rem; color:#475569; display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; }
+
+  /* Step label */
+  .step-label {
+    font-size:0.75rem; color:#94a3b8;
+    background:rgba(255,255,255,0.05); border-radius:6px;
+    padding:0.15rem 0.5rem;
+  }
+  .step-label.is-active { color:#a78bfa; background:rgba(99,55,255,0.1); }
+
+  /* Actions */
+  .job-actions { display:flex; align-items:center; gap:0.6rem; flex-shrink:0; }
+  .btn-detail {
+    padding:0.4rem 0.9rem; font-size:0.78rem; font-weight:600;
+    color:#a78bfa; background:rgba(99,55,255,0.12);
+    border:1px solid rgba(99,55,255,0.25); border-radius:8px;
+    text-decoration:none; transition:background 0.2s;
+    white-space:nowrap;
+  }
+  .btn-detail:hover { background:rgba(99,55,255,0.22); }
+  .btn-yt {
+    padding:0.4rem 0.9rem; font-size:0.78rem; font-weight:600;
+    color:#f87171; background:rgba(239,68,68,0.08);
+    border:1px solid rgba(239,68,68,0.2); border-radius:8px;
+    text-decoration:none; transition:background 0.2s;
+    white-space:nowrap;
+  }
+  .btn-yt:hover { background:rgba(239,68,68,0.15); }
+
+  /* Error text */
+  .error-text { font-size:0.75rem; color:#f87171; margin-top:0.3rem; }
+
+  /* Refresh indicator */
+  .refresh-bar {
+    display:flex; align-items:center; gap:0.5rem;
+    font-size:0.75rem; color:#475569; margin-bottom:1.25rem;
+  }
+  .refresh-dot { width:8px; height:8px; border-radius:50%; background:#6337ff; animation:pulse 1.5s infinite; }
+
+  @media (max-width:640px) {
+    .top-header { padding:0 1rem; }
+    .page-body  { padding:1.75rem 1rem 3rem; }
+    .job-card   { flex-direction:column; align-items:flex-start; }
+    .job-actions{ width:100%; }
+  }
+</style>
+
+<!-- Header -->
+<header class="top-header">
+  <a href="{% url 'accounts:dashboard' %}" class="header-brand">
+    <span class="logo-icon"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
+    <span class="logo-text">VideoCreate AI</span>
+  </a>
+  <div class="header-right">
+    <div class="user-badge">
+      <span class="user-avatar">{{ user.email|first|upper }}</span>
+      <span>{{ user.email }}</span>
+    </div>
+    <form method="post" action="{% url 'accounts:logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn-logout">ログアウト</button>
+    </form>
+  </div>
+</header>
+
+<div class="page-body">
+  <!-- Breadcrumb -->
+  <nav class="breadcrumb">
+    <a href="{% url 'accounts:dashboard' %}">ダッシュボード</a>
+    <span>/</span>
+    <span>生成履歴</span>
+  </nav>
+
+  <h1 class="page-title">生成履歴</h1>
+  <p class="page-sub">過去に作成した AI 動画の一覧と進捗状況を確認できます。</p>
+
+  {% if jobs %}
+    <!-- アクティブJobがある場合は自動更新インジケーターを表示 -->
+    <div class="refresh-bar" id="refresh-bar" style="display:none;">
+      <span class="refresh-dot"></span>
+      <span>処理中のJobを自動更新中…</span>
+    </div>
+
+    <div class="job-list" id="job-list">
+      {% for job in jobs %}
+      {% with status=job.status %}
+      <div class="job-card {% if status == 'generating' or status == 'publishing' or status == 'queued' or status == 'generated' %}is-active{% endif %}"
+           id="job-card-{{ job.id }}"
+           data-job-id="{{ job.id }}"
+           data-status="{{ status }}">
+
+        <!-- ステータスバッジ -->
+        <span class="status-badge badge-{{ status }}" id="badge-{{ job.id }}">
+          <span class="dot"></span>
+          <span class="badge-text">{{ job.get_status_display }}</span>
+        </span>
+
+        <!-- Job情報 -->
+        <div class="job-info">
+          <p class="job-title">Job #{{ job.id }}</p>
+          <div class="job-meta">
+            <span>{{ job.created_at|date:"Y/m/d H:i" }}</span>
+            {% if job.current_step %}
+              <span class="step-label {% if status == 'generating' or status == 'publishing' %}is-active{% endif %}"
+                    id="step-{{ job.id }}">{{ job.get_current_step_display }}</span>
+            {% endif %}
+            {% if job.error_code and status == 'failed' %}
+              <span style="color:#f87171;">エラー: {{ job.error_code }}</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- アクション -->
+        <div class="job-actions">
+          {% if job.youtube_video_url %}
+            <a href="{{ job.youtube_video_url }}" target="_blank" class="btn-yt" id="yt-btn-{{ job.id }}">
+              YouTube で見る
+            </a>
+          {% else %}
+            <a href="{{ job.youtube_video_url }}" target="_blank" class="btn-yt"
+               id="yt-btn-{{ job.id }}" style="display:none;">YouTube で見る</a>
+          {% endif %}
+          <a href="{% url 'jobs:job_detail' job.id %}" class="btn-detail">詳細</a>
+        </div>
+
+      </div>
+      {% endwith %}
+      {% endfor %}
+    </div>
+
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">🎬</div>
+      <p>まだ動画が作成されていません。<br>最初の AI 動画を生成してみましょう。</p>
+      <a href="{% url 'accounts:create_video' %}" class="btn-primary">動画を作成する</a>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+(function () {
+  const ACTIVE_STATUSES = new Set(['queued', 'generating', 'generated', 'publishing']);
+  const STATUS_LABELS = {
+    queued:     '待機中',
+    generating: '動画生成中',
+    generated:  '動画生成完了',
+    publishing: 'YouTube投稿中',
+    completed:  '完了',
+    failed:     '失敗',
+    cancelled:  'キャンセル',
+  };
+
+  // 初回: アクティブなJobIDを収集
+  let activeIds = new Set(
+    [...document.querySelectorAll('[data-job-id]')]
+      .filter(el => ACTIVE_STATUSES.has(el.dataset.status))
+      .map(el => el.dataset.jobId)
+  );
+
+  if (activeIds.size === 0) return;
+
+  document.getElementById('refresh-bar').style.display = 'flex';
+
+  function updateCard(data) {
+    const id       = data.job_id;
+    const card     = document.getElementById('job-card-' + id);
+    const badge    = document.getElementById('badge-' + id);
+    const stepEl   = document.getElementById('step-' + id);
+    const ytBtn    = document.getElementById('yt-btn-' + id);
+    if (!card) return;
+
+    // ステータス更新
+    const status = data.status;
+    card.dataset.status = status;
+    badge.className = 'status-badge badge-' + status;
+    badge.querySelector('.badge-text').textContent = STATUS_LABELS[status] || status;
+
+    // アクティブクラス
+    if (ACTIVE_STATUSES.has(status)) {
+      card.classList.add('is-active');
+    } else {
+      card.classList.remove('is-active');
+    }
+
+    // ステップ表示
+    if (data.current_step && data.current_step_display) {
+      if (stepEl) {
+        stepEl.textContent = data.current_step_display;
+        stepEl.className = 'step-label' + (ACTIVE_STATUSES.has(status) ? ' is-active' : '');
+      } else {
+        // ステップ要素がない場合は追加
+        const meta = card.querySelector('.job-meta');
+        if (meta) {
+          const span = document.createElement('span');
+          span.id = 'step-' + id;
+          span.className = 'step-label' + (ACTIVE_STATUSES.has(status) ? ' is-active' : '');
+          span.textContent = data.current_step_display;
+          meta.appendChild(span);
+        }
+      }
+    }
+
+    // YouTubeリンク
+    if (data.youtube_video_url && ytBtn) {
+      ytBtn.href = data.youtube_video_url;
+      ytBtn.style.display = '';
+    }
+  }
+
+  const timer = setInterval(async () => {
+    if (activeIds.size === 0) { clearInterval(timer); return; }
+
+    const fetches = [...activeIds].map(id =>
+      fetch('/api/jobs/' + id + '/status/')
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return;
+          updateCard(data);
+          if (!ACTIVE_STATUSES.has(data.status)) {
+            activeIds.delete(String(data.job_id));
+          }
+        })
+        .catch(() => {})
+    );
+    await Promise.all(fetches);
+
+    if (activeIds.size === 0) {
+      clearInterval(timer);
+      const bar = document.getElementById('refresh-bar');
+      if (bar) bar.style.display = 'none';
+    }
+  }, 5000);
+})();
+</script>
+{% endblock %}

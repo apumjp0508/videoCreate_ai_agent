@@ -18,6 +18,10 @@ from datetime import timedelta
 from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
+    from temporal.activities.job_progress.interfaces import (
+        UpdateJobProgressInput,
+        update_job_progress,
+    )
     from temporal.activities.video_generation.interfaces import (
         BuildAiRequestInput,
         FetchAiConfigInput,
@@ -121,6 +125,17 @@ class VideoGenerationWorkflow:
         workflow.logger.info("build_ai_request done  job_id=%s", input.job_id)
 
         # ── Step 5: AIへ送信 ───────────────────────────────────────
+        # 進捗更新: AI呼び出し開始
+        await workflow.execute_activity(
+            update_job_progress,
+            UpdateJobProgressInput(
+                job_id=input.job_id,
+                step="CALL_AI",
+                event_type="AI_REQUEST_SENT",
+                message="AI動画生成リクエストを送信します",
+            ),
+            start_to_close_timeout=timedelta(minutes=1),
+        )
         submit_result = await workflow.execute_activity(
             submit_ai_request,
             SubmitAiRequestInput(
@@ -137,6 +152,18 @@ class VideoGenerationWorkflow:
         )
 
         # ── Step 6: 生成完了まで状況確認（ポーリング） ────────────
+        # 進捗更新: AI生成待機開始
+        await workflow.execute_activity(
+            update_job_progress,
+            UpdateJobProgressInput(
+                job_id=input.job_id,
+                step="WAIT_AI_RESULT",
+                event_type="STEP_UPDATED",
+                message="AI動画の生成完了を待機しています",
+                payload={"generation_id": submit_result.generation_id},
+            ),
+            start_to_close_timeout=timedelta(minutes=1),
+        )
         poll_result = None
         for attempt in range(1, _MAX_POLL_ATTEMPTS + 1):
             poll_result = await workflow.execute_activity(
@@ -170,6 +197,20 @@ class VideoGenerationWorkflow:
         workflow.logger.info(
             "Generation completed  job_id=%s  video_url=%s",
             input.job_id, poll_result.video_url,
+        )
+
+        # 進捗更新: AI生成完了
+        await workflow.execute_activity(
+            update_job_progress,
+            UpdateJobProgressInput(
+                job_id=input.job_id,
+                step="FETCH_VIDEO",
+                event_type="AI_RENDER_COMPLETED",
+                message="AI動画の生成が完了しました",
+                payload={"generation_id": submit_result.generation_id},
+                status="generated",
+            ),
+            start_to_close_timeout=timedelta(minutes=1),
         )
 
         # ── Step 7: 完成動画取得 ───────────────────────────────────

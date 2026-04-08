@@ -320,9 +320,32 @@ class DjangoYoutubePublishService(DummyYoutubePublishService):
             "upload_video_to_youtube done  job_id=%s  yt_id=%s",
             input.job_id, youtube_video_id,
         )
+
+        # YouTube アップロード完了イベントを記録
+        await sync_to_async(self._record_upload_completed)(
+            input.job_id, youtube_video_id, youtube_video_url
+        )
+
         return UploadVideoToYoutubeOutput(
             youtube_video_id=youtube_video_id,
             youtube_video_url=youtube_video_url,
+        )
+
+    @staticmethod
+    def _record_upload_completed(
+        job_id: str, youtube_video_id: str, youtube_video_url: str
+    ) -> None:
+        from jobs.models import EventType, VideoJobEvent
+
+        VideoJobEvent.objects.create(
+            job_id=int(job_id),
+            event_type=EventType.YOUTUBE_UPLOAD_COMPLETED,
+            step_name="UPLOAD_YOUTUBE",
+            message=f"YouTubeアップロード完了: {youtube_video_url}",
+            payload_json={
+                "youtube_video_id": youtube_video_id,
+                "youtube_video_url": youtube_video_url,
+            },
         )
 
     # ── set_thumbnail（YouTube API）──────────────────────────────

@@ -28,4 +28,5 @@ urlpatterns = [
     path('admin-panel/', include('admin_panel.urls', namespace='admin_panel')),
     path('', include('google_auth.urls', namespace='google_auth')),
     path('', include('aivideo_component.urls', namespace='aivideo_component')),
+    path('', include('jobs.urls', namespace='jobs')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
