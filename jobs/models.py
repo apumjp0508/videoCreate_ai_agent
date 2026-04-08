@@ -67,6 +67,45 @@ class AssetRole(models.TextChoices):
 
 
 # ─────────────────────────────────────────────────────────────
+# GeneratedVideo  ─ AI が生成した完成動画
+# ─────────────────────────────────────────────────────────────
+
+class GeneratedVideo(models.Model):
+    """
+    AI が生成した完成動画ファイルを保存するテーブル。
+
+    動画ファイル本体は Django media ストレージ（generated_videos/）に保存し、
+    ファイルパスを video_file フィールドで管理する。
+    VideoJob から OneToOne FK で参照され、generated_video_id カラムが video_jobs テーブルに作られる。
+    """
+    video_file    = models.FileField(
+        upload_to='generated_videos/',
+        max_length=500,
+        help_text='media/generated_videos/ 以下のパス',
+    )
+    original_url  = models.URLField(
+        max_length=1000, blank=True,
+        help_text='AI プロバイダーが返した元の動画 URL',
+    )
+    generation_id = models.CharField(
+        max_length=255, blank=True, db_index=True,
+        help_text='AI プロバイダー側の生成ジョブ ID',
+    )
+    mime_type       = models.CharField(max_length=100, default='video/mp4')
+    file_size_bytes = models.PositiveBigIntegerField(null=True, blank=True)
+    duration_sec    = models.FloatField(null=True, blank=True, help_text='動画の長さ（秒）')
+    resolution      = models.CharField(max_length=20, blank=True, help_text='例: 1920x1080')
+    created_at      = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'generated_videos'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'GeneratedVideo #{self.pk} [{self.video_file.name}]'
+
+
+# ─────────────────────────────────────────────────────────────
 # Prompt  ─ プロンプトテキスト
 # ─────────────────────────────────────────────────────────────
 
@@ -153,6 +192,15 @@ class VideoJob(models.Model):
     # ── Temporal 追跡 ────────────────────────────────────────
     temporal_workflow_id = models.CharField(max_length=255, blank=True, db_index=True)
     temporal_run_id      = models.CharField(max_length=255, blank=True)
+
+    # ── 生成動画 ─────────────────────────────────────────────
+    generated_video = models.OneToOneField(
+        'GeneratedVideo',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='video_job',
+        help_text='AI が生成した完成動画（media/generated_videos/ に保存）',
+    )
 
     # ── 進捗 ─────────────────────────────────────────────────
     current_step = models.CharField(

@@ -28,6 +28,8 @@ from temporal.activities.video_generation.interfaces import (
     FetchRequestDefinitionOutput,
     PollGenerationStatusInput,
     PollGenerationStatusOutput,
+    SaveGeneratedVideoInput,
+    SaveGeneratedVideoOutput,
     SubmitAiRequestInput,
     SubmitAiRequestOutput,
 )
@@ -120,6 +122,18 @@ class DummyVideoGenerationService:
             },
         )
 
+    async def save_generated_video(self, input: SaveGeneratedVideoInput) -> SaveGeneratedVideoOutput:
+        logger.info(
+            "[Dummy] save_generated_video  job_id=%s  gen_id=%s  url=%s",
+            input.job_id, input.generation_id, input.video_url,
+        )
+        await asyncio.sleep(0.05)
+        # ダミー: ダウンロード・DB保存は行わず、元の URL をそのまま返す
+        return SaveGeneratedVideoOutput(
+            generated_video_id=0,
+            media_url=input.video_url,
+        )
+
 
 # ─────────────────────────────────────────────────────────────
 # Activity 関数（worker_pipeline.py で登録する）
@@ -168,3 +182,10 @@ async def dummy_fetch_generated_video(
     input: FetchGeneratedVideoInput,
 ) -> FetchGeneratedVideoOutput:
     return await _service.fetch_generated_video(input)
+
+
+@activity.defn(name="save_generated_video")
+async def dummy_save_generated_video(
+    input: SaveGeneratedVideoInput,
+) -> SaveGeneratedVideoOutput:
+    return await _service.save_generated_video(input)

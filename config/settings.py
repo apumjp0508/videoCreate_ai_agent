@@ -93,6 +93,11 @@ DATABASES = {
 
 AUTH_USER_MODEL = 'accounts.User'
 
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'django.contrib.auth.backends.AllowAllUsersModelBackend',
+]
+
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -137,6 +142,11 @@ TEMPORAL_TASK_QUEUE = os.environ.get("TEMPORAL_TASK_QUEUE", "video-job-queue")
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Django サーバーの絶対ベース URL。
+# Temporal Worker が生成動画を Django media 経由で配信するために使用する。
+# Docker Compose では Django サービスの内部 URL（例: http://web:8000）を設定する。
+SITE_BASE_URL = os.environ.get('SITE_BASE_URL', 'http://localhost:8000')
 
 # Google Cloud / YouTube Data API
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')

@@ -73,9 +73,19 @@ class YoutubeChannel(models.Model):
     # YouTube Data API で返される channels.id
     youtube_channel_id = models.CharField(max_length=255, unique=True)
     title = models.CharField(max_length=255, blank=True)
-    # @handle 形式のカスタム URL
+    # @handle 形式のカスタム URL (snippet.customUrl)
     handle = models.CharField(max_length=255, blank=True)
     thumbnail_url = models.URLField(blank=True)
+    # snippet.description
+    description = models.TextField(blank=True)
+    # snippet.country (例: "JP")
+    country = models.CharField(max_length=10, blank=True)
+    # contentDetails.relatedPlaylists.uploads
+    uploads_playlist_id = models.CharField(max_length=255, blank=True)
+    # statistics（YouTube API は文字列で返すが DB には数値で保存）
+    subscriber_count = models.BigIntegerField(null=True, blank=True)
+    video_count = models.IntegerField(null=True, blank=True)
+    view_count = models.BigIntegerField(null=True, blank=True)
     # mine=true で取得したチャンネルのうちデフォルトとして使うもの
     is_default = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)

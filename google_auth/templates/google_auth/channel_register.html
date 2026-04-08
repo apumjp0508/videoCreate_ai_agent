@@ -1,0 +1,352 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}チャンネルを選択 — VideoCreate AI{% endblock %}
+
+{% block content %}
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: #0a0c14;
+    background-image:
+      radial-gradient(ellipse 70% 50% at 15% 5%,  rgba(99, 55, 255, 0.15) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 85% 90%, rgba(0, 200, 255, 0.10) 0%, transparent 50%);
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+
+  .page-wrapper {
+    width: 100%;
+    max-width: 560px;
+  }
+
+  /* ===== Header ===== */
+  .page-header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .brand-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 2rem;
+    text-decoration: none;
+  }
+
+  .brand-logo .logo-icon {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #6337ff, #00c8ff);
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .brand-logo .logo-icon svg { width: 18px; height: 18px; fill: #fff; }
+
+  .brand-logo .logo-text {
+    font-size: 1rem; font-weight: 700;
+    background: linear-gradient(90deg, #a78bfa, #38bdf8);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+
+  /* Step indicator */
+  .steps-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 1.75rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 40px;
+    padding: 0.4rem 1rem;
+  }
+
+  .step-item { display: flex; align-items: center; gap: 0.4rem; }
+
+  .step-bubble {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.68rem; font-weight: 800; flex-shrink: 0;
+  }
+
+  .step-bubble.done {
+    background: linear-gradient(135deg, #6337ff, #00c8ff);
+    color: #fff;
+  }
+
+  .step-bubble.active {
+    background: rgba(0,200,255,0.15);
+    border: 1.5px solid #00c8ff;
+    color: #00c8ff;
+  }
+
+  .step-label { font-size: 0.74rem; color: #94a3b8; white-space: nowrap; }
+  .step-label.active { color: #e2e8f0; font-weight: 600; }
+  .step-label.done   { color: #475569; }
+
+  .step-connector {
+    width: 20px; height: 1px;
+    background: rgba(255,255,255,0.12);
+    margin: 0 0.4rem;
+  }
+
+  .page-title {
+    font-size: 1.5rem; font-weight: 800; color: #f1f5f9;
+    margin-bottom: 0.4rem;
+  }
+
+  .page-sub {
+    font-size: 0.88rem; color: #94a3b8; line-height: 1.6;
+  }
+
+  /* ===== Card ===== */
+  .card {
+    background: rgba(15, 18, 30, 0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 18px;
+    padding: 2rem;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  /* ===== Messages ===== */
+  .msg-box {
+    border-radius: 10px; padding: 0.8rem 1rem;
+    margin-bottom: 1.25rem; font-size: 0.82rem;
+  }
+  .msg-box.error { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.35); color: #fca5a5; }
+
+  /* ===== Channel list ===== */
+  .channel-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .channel-label {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    background: rgba(255,255,255,0.03);
+    border: 1.5px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    position: relative;
+  }
+
+  .channel-label:hover {
+    background: rgba(99,55,255,0.07);
+    border-color: rgba(99,55,255,0.2);
+  }
+
+  .channel-label input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0; height: 0;
+  }
+
+  .channel-label input[type="radio"]:checked + .channel-radio-indicator {
+    background: #6337ff;
+    border-color: #6337ff;
+  }
+
+  .channel-label input[type="radio"]:checked + .channel-radio-indicator::after {
+    display: block;
+  }
+
+  .channel-label:has(input[type="radio"]:checked) {
+    background: rgba(99,55,255,0.1);
+    border-color: rgba(99,55,255,0.45);
+  }
+
+  .channel-radio-indicator {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.2);
+    background: transparent;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, border-color 0.15s;
+    position: relative;
+  }
+
+  .channel-radio-indicator::after {
+    content: '';
+    display: none;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #fff;
+  }
+
+  .channel-thumb {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(99,55,255,0.15);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; flex-shrink: 0;
+  }
+
+  .channel-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+  .channel-thumb-placeholder {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .channel-info { flex: 1; min-width: 0; }
+
+  .channel-title {
+    font-size: 0.9rem; font-weight: 600; color: #e2e8f0;
+    margin-bottom: 0.15rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .channel-handle { font-size: 0.78rem; color: #94a3b8; }
+
+  /* ===== Empty state ===== */
+  .empty-state {
+    text-align: center;
+    padding: 2rem 0;
+  }
+
+  .empty-state .empty-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: rgba(99,55,255,0.12);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem;
+  }
+
+  .empty-state .empty-icon svg {
+    width: 22px; height: 22px; fill: none;
+    stroke: #818cf8; stroke-width: 1.8;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+
+  .empty-state p { font-size: 0.88rem; color: #64748b; line-height: 1.7; }
+
+  /* ===== Submit button ===== */
+  .btn-submit {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border: none; border-radius: 10px;
+    background: linear-gradient(135deg, #00c8ff 0%, #3b82f6 50%, #6337ff 100%);
+    color: #fff; font-size: 0.95rem; font-weight: 700;
+    letter-spacing: 0.03em; cursor: pointer;
+    transition: opacity 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 20px rgba(0,200,255,0.25);
+  }
+
+  .btn-submit:hover { opacity: 0.9; box-shadow: 0 6px 28px rgba(0,200,255,0.38); }
+  .btn-submit:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 600px) {
+    .card { padding: 1.5rem 1.25rem; }
+  }
+</style>
+
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <a href="{% url 'accounts:dashboard' %}" class="brand-logo">
+      <span class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </span>
+      <span class="logo-text">VideoCreate AI</span>
+    </a>
+
+    <div>
+      <div class="steps-indicator">
+        <div class="step-item">
+          <span class="step-bubble done">&#10003;</span>
+          <span class="step-label done">アカウント情報</span>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-item">
+          <span class="step-bubble done">&#10003;</span>
+          <span class="step-label done">Google連携</span>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-item">
+          <span class="step-bubble active">3</span>
+          <span class="step-label active">チャンネル選択</span>
+        </div>
+      </div>
+    </div>
+
+    <h1 class="page-title">チャンネルを選択</h1>
+    <p class="page-sub">投稿先にするYouTubeチャンネルを選択してください。</p>
+  </div>
+
+  <div class="card">
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="msg-box error">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    {% if channels %}
+      <form method="post" id="channel-form">
+        {% csrf_token %}
+
+        <div class="channel-list">
+          {% for channel in channels %}
+          <label class="channel-label">
+            <input type="radio" name="youtube_channel_id" value="{{ channel.id }}" required>
+            <span class="channel-radio-indicator"></span>
+            <div class="channel-thumb">
+              {% if channel.thumbnail_url %}
+                <img src="{{ channel.thumbnail_url }}" alt="{{ channel.title }}">
+              {% else %}
+                <span class="channel-thumb-placeholder">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#818cf8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="5 3 19 12 5 21 5 3"/>
+                  </svg>
+                </span>
+              {% endif %}
+            </div>
+            <div class="channel-info">
+              <div class="channel-title">{{ channel.title|default:"（タイトル未設定）" }}</div>
+              {% if channel.handle %}
+                <div class="channel-handle">{{ channel.handle }}</div>
+              {% endif %}
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+
+        <button type="submit" class="btn-submit" id="submit-btn" disabled>
+          このチャンネルで登録する
+        </button>
+      </form>
+
+      <script>
+        const radios = document.querySelectorAll('input[type="radio"]');
+        const btn = document.getElementById('submit-btn');
+        radios.forEach(r => r.addEventListener('change', () => { btn.disabled = false; }));
+      </script>
+
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+        </div>
+        <p>
+          このGoogleアカウントに紐づくYouTubeチャンネルが見つかりませんでした。<br>
+          YouTubeチャンネルを作成してから再度お試しください。
+        </p>
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

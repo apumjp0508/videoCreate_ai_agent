@@ -236,11 +236,11 @@
       <h1 class="page-title">チャンネルを選択</h1>
       <p class="page-sub">動画を投稿するYouTubeチャンネルを選んでください。</p>
     </div>
-    <a href="{% url 'google_auth:oauth_start' %}" class="btn-secondary">
+    <a href="{% url 'google_auth:channel_sync' %}?next={% url 'google_auth:youtube_select' %}" class="btn-secondary">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
       </svg>
-      YouTube連携を追加
+      YouTubeチャンネルを追加
     </a>
   </div>
 
@@ -285,9 +285,9 @@
         </svg>
       </div>
       <p class="empty-title">YouTubeチャンネルがありません</p>
-      <p class="empty-sub">まだYouTubeアカウントが連携されていません。<br>「YouTube連携を追加」から連携を開始してください。</p>
+      <p class="empty-sub">まだYouTubeアカウントが連携されていません。<br>「YouTubeチャンネルを追加」から連携を開始してください。</p>
       <a href="{% url 'google_auth:oauth_start' %}" class="btn-primary">
-        YouTube連携を始める
+        YouTubeチャンネルを追加
       </a>
     </div>
   {% endif %}

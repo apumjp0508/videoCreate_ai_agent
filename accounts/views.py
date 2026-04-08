@@ -15,10 +15,22 @@ class RegisterView(View):
     def post(self, request):
         form = RegisterForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            login(request, user)
-            return redirect('accounts:dashboard')
+            user = form.save(commit=False)
+            user.is_active = False
+            user.save()
+            # AllowAllUsersModelBackend を使い is_active=False でもセッションを維持する
+            login(request, user, backend='django.contrib.auth.backends.AllowAllUsersModelBackend')
+            return redirect('accounts:register_connect_google')
         return render(request, 'accounts/register.html', {'form': form})
+
+
+class RegisterConnectGoogleView(View):
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return redirect('accounts:register')
+        if request.user.is_active:
+            return redirect('accounts:dashboard')
+        return render(request, 'accounts/register_connect_google.html')
 
 
 class CustomLoginView(LoginView):
@@ -40,6 +52,8 @@ class DashboardView(View):
     def get(self, request):
         if not request.user.is_authenticated:
             return redirect('accounts:login')
+        if not request.user.is_active:
+            return redirect('accounts:register_connect_google')
         return render(request, 'accounts/dashboard.html')
 
 

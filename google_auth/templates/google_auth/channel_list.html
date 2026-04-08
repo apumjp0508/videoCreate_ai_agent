@@ -256,11 +256,11 @@
       </h1>
       <p class="page-sub">連携済みGoogleアカウントのYouTubeチャンネルを確認・管理できます。</p>
     </div>
-    <a href="{% url 'google_auth:oauth_start' %}" class="btn-primary">
+    <a href="{% url 'google_auth:channel_sync' %}" class="btn-primary">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/>
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
       </svg>
-      YouTube連携を追加
+      YouTubeチャンネルを追加
     </a>
   </div>
 
@@ -334,10 +334,10 @@
       <p class="empty-title">YouTubeアカウントが未連携です</p>
       <p class="empty-sub">
         まだGoogleアカウントが連携されていません。<br>
-        「YouTube連携を追加」から連携を開始してください。
+        「YouTubeチャンネルを追加」から連携を開始してください。
       </p>
-      <a href="{% url 'google_auth:oauth_start' %}" class="btn-primary">
-        YouTube連携を始める
+      <a href="{% url 'google_auth:channel_sync' %}" class="btn-primary">
+        YouTubeチャンネルを追加
       </a>
     </div>
   {% endif %}

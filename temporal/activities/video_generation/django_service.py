@@ -6,11 +6,7 @@ VideoGeneration Activity の Django / 純粋ロジック実装。
   - fetch_ai_config          Django ORM（UserVideoAiCredential / VideoAiModel / VideoAiProvider）
   - fetch_request_definition Django ORM（Prompt）
   - build_ai_request         純粋ロジック（外部依存なし）
-
-AIプロバイダー固有 Activity は DummyVideoGenerationService を継承:
-  - submit_ai_request        → 各プロバイダー実装に差し替える
-  - poll_generation_status   → 各プロバイダー実装に差し替える
-  - fetch_generated_video    → 各プロバイダー実装に差し替える
+  - save_generated_video     httpx でダウンロード → Django media に保存 → GeneratedVideo 作成
 
 設計方針:
   - Activity は async def だが Django ORM は同期的 → sync_to_async でラップ
@@ -43,6 +39,8 @@ from temporal.activities.video_generation.interfaces import (
     FetchRequestDefinitionInput,
     FetchRequestDefinitionOutput,
     ImageMaterial,
+    SaveGeneratedVideoInput,
+    SaveGeneratedVideoOutput,
 )
 
 logger = logging.getLogger(__name__)
@@ -256,6 +254,95 @@ class DjangoVideoGenerationService(DummyVideoGenerationService):
             format_settings={},  # 将来: プロンプトに紐づくフォーマット設定を追加
         )
 
+    # ── save_generated_video（ダウンロード + media 保存）─────────
+
+    async def save_generated_video(
+        self, input: SaveGeneratedVideoInput
+    ) -> SaveGeneratedVideoOutput:
+        """
+        AI プロバイダーの動画 URL からダウンロードして Django media に保存する。
+
+        処理フロー:
+          1. httpx で動画をストリーミングダウンロード
+          2. Django FileField 経由で media/generated_videos/ に保存
+          3. GeneratedVideo レコードを DB 作成
+          4. VideoJob.generated_video を更新
+          5. 絶対 media URL を返す（YoutubePublishWorkflow が動画アップロードに使用）
+        """
+        logger.info(
+            "save_generated_video  job_id=%s  gen_id=%s  url=%s",
+            input.job_id, input.generation_id, input.video_url,
+        )
+
+        video_bytes, content_type = await self._stream_download(input.video_url)
+        result = await sync_to_async(self._persist_to_media)(
+            input, video_bytes, content_type
+        )
+
+        logger.info(
+            "save_generated_video done  job_id=%s  generated_video_id=%d  size=%d bytes  url=%s",
+            input.job_id, result.generated_video_id, len(video_bytes), result.media_url,
+        )
+        return result
+
+    @staticmethod
+    async def _stream_download(url: str) -> tuple[bytes, str]:
+        """httpx で URL からバイト列と Content-Type を取得する。"""
+        import httpx
+
+        logger.info("Downloading video: %s", url)
+        async with httpx.AsyncClient(follow_redirects=True, timeout=600.0) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+            content_type = response.headers.get("content-type", "video/mp4")
+            data = response.content
+        logger.info("Download complete: %d bytes  content_type=%s", len(data), content_type)
+        return data, content_type
+
+    @staticmethod
+    def _persist_to_media(
+        input: SaveGeneratedVideoInput,
+        video_bytes: bytes,
+        content_type: str,
+    ) -> SaveGeneratedVideoOutput:
+        """
+        ダウンロードした動画を Django media ストレージに保存して
+        GeneratedVideo / VideoJob を更新する（同期・DB トランザクション内）。
+        """
+        from django.conf import settings
+        from django.core.files.base import ContentFile
+        from jobs.models import GeneratedVideo, VideoJob
+
+        # Content-Type からファイル拡張子を決定
+        ext = _ext_from_content_type(content_type)
+        filename = f"job{input.job_id}_gen{input.generation_id}.{ext}"
+
+        meta = input.video_metadata or {}
+
+        # GeneratedVideo レコードを作成して video_file を保存
+        gv = GeneratedVideo(
+            original_url=input.video_url[:1000],
+            generation_id=input.generation_id,
+            mime_type=content_type.split(";")[0].strip() or "video/mp4",
+            file_size_bytes=len(video_bytes),
+            duration_sec=meta.get("duration_sec"),
+            resolution=meta.get("resolution", ""),
+        )
+        # FileField.save() がストレージへの書き込み + gv.save() を行う
+        gv.video_file.save(filename, ContentFile(video_bytes), save=True)
+
+        # VideoJob.generated_video を更新（generated_video_id カラムに書き込まれる）
+        VideoJob.objects.filter(id=int(input.job_id)).update(generated_video=gv)
+
+        # 絶対 URL を組み立てる
+        base_url = getattr(settings, "SITE_BASE_URL", "http://localhost:8000").rstrip("/")
+        media_url = f"{base_url}{gv.video_file.url}"
+
+        return SaveGeneratedVideoOutput(
+            generated_video_id=gv.id,
+            media_url=media_url,
+        )
+
     # ── build_ai_request（純粋ロジック）───────────────────────
 
     async def build_ai_request(
@@ -284,3 +371,19 @@ class DjangoVideoGenerationService(DummyVideoGenerationService):
             "params": input.config_params,
         }
         return BuildAiRequestOutput(ai_request_payload=payload)
+
+
+# ─────────────────────────────────────────────────────────────
+# モジュールレベルユーティリティ
+# ─────────────────────────────────────────────────────────────
+
+def _ext_from_content_type(content_type: str) -> str:
+    """Content-Type ヘッダから動画ファイルの拡張子を返す。"""
+    ct = content_type.lower().split(";")[0].strip()
+    return {
+        "video/mp4":       "mp4",
+        "video/webm":      "webm",
+        "video/quicktime": "mov",
+        "video/x-msvideo": "avi",
+        "video/x-matroska":"mkv",
+    }.get(ct, "mp4")

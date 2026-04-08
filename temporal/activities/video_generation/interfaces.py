@@ -244,3 +244,44 @@ class FetchGeneratedVideoOutput:
 @activity.defn
 async def fetch_generated_video(input: FetchGeneratedVideoInput) -> FetchGeneratedVideoOutput:
     raise NotImplementedError
+
+
+# ─────────────────────────────────────────────────────────────
+# 8. save_generated_video  ─ 完成動画を media に保存して DB に記録
+# ─────────────────────────────────────────────────────────────
+
+@dataclass
+class SaveGeneratedVideoInput:
+    """
+    AI プロバイダーが返した動画 URL をダウンロードして Django media に保存する。
+
+    job_id:          対象 VideoJob の PK（文字列）
+    generation_id:   AI プロバイダー側の生成ジョブ ID
+    video_url:       ダウンロード元 URL（AI プロバイダーの一時 URL）
+    video_metadata:  fetch_generated_video が返したメタデータ
+                     （duration_sec / resolution / format 等）
+    """
+    job_id: str
+    generation_id: str
+    video_url: str
+    video_metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class SaveGeneratedVideoOutput:
+    """
+    media に保存された動画の情報。
+
+    generated_video_id : jobs.GeneratedVideo の PK
+    media_url          : Django media 経由でアクセス可能な絶対 URL
+                         （YoutubePublishWorkflow の video_url として使用する）
+    """
+    generated_video_id: int
+    media_url: str
+
+
+@activity.defn
+async def save_generated_video(
+    input: SaveGeneratedVideoInput,
+) -> SaveGeneratedVideoOutput:
+    raise NotImplementedError

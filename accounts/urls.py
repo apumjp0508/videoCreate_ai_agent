@@ -5,6 +5,7 @@ app_name = 'accounts'
 
 urlpatterns = [
     path('register/', views.RegisterView.as_view(), name='register'),
+    path('register/connect-google/', views.RegisterConnectGoogleView.as_view(), name='register_connect_google'),
     path('login/', views.CustomLoginView.as_view(), name='login'),
     path('logout/', views.LogoutView.as_view(), name='logout'),
     path('dashboard/', views.DashboardView.as_view(), name='dashboard'),

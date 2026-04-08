@@ -7,8 +7,42 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, render
 from django.views import View
 
+from fetch_channel import get_client as get_fetch_channel_client
+from fetch_channel.interfaces import ChannelInfo
 from . import services
 from .models import OauthToken, UserGoogleAccount, YoutubeChannel
+
+
+def _save_channels(channels: list[ChannelInfo], google_account: UserGoogleAccount, user) -> int:
+    """取得したチャンネル一覧をすべてDBに保存する。保存件数を返す。"""
+    already_has_default = YoutubeChannel.objects.filter(
+        user_google_account__user=user,
+        is_default=True,
+    ).exists()
+
+    saved = 0
+    for i, channel_info in enumerate(channels):
+        is_default = (not already_has_default) and (i == 0)
+        YoutubeChannel.objects.update_or_create(
+            youtube_channel_id=channel_info.id,
+            defaults={
+                'user_google_account': google_account,
+                'title': channel_info.title,
+                'handle': channel_info.handle,
+                'thumbnail_url': channel_info.thumbnail_url,
+                'description': channel_info.description,
+                'country': channel_info.country,
+                'uploads_playlist_id': channel_info.uploads_playlist_id,
+                'subscriber_count': channel_info.subscriber_count,
+                'video_count': channel_info.video_count,
+                'view_count': channel_info.view_count,
+                'is_default': is_default,
+                'is_active': True,
+                'fetched_at': datetime.now(timezone.utc),
+            },
+        )
+        saved += 1
+    return saved
 
 
 class ChannelListView(LoginRequiredMixin, View):
@@ -31,6 +65,10 @@ class GoogleOAuthStartView(LoginRequiredMixin, View):
     login_url = '/login/'
 
     def get(self, request):
+        next_url = request.GET.get('next', '')
+        if next_url:
+            request.session['oauth_next'] = next_url
+
         if settings.GOOGLE_OAUTH_MOCK:
             # モック: ステートは固定値でそのままコールバックへ
             return redirect('/auth/google/callback/?code=mock_code_12345&state=mock_state')
@@ -63,17 +101,20 @@ class GoogleOAuthCallbackView(LoginRequiredMixin, View):
                 return redirect('google_auth:channel_list')
 
         try:
-            # ── 1. トークン・ユーザー情報・チャンネル情報の取得 ──────────────
+            # ── 1. トークン・ユーザー情報の取得 ──────────────────────────────
             if settings.GOOGLE_OAUTH_MOCK:
                 token_data = services.mock_exchange_code(code)
                 userinfo = services.mock_fetch_userinfo(request.user.email)
-                raw_channels = services.mock_fetch_channels()
             else:
                 token_data = services.exchange_code_for_tokens(code)
                 userinfo = services.fetch_google_userinfo(token_data['access_token'])
-                raw_channels = services.fetch_youtube_channels(token_data['access_token'])
 
             access_token = token_data['access_token']
+
+            # チャンネル取得は fetch_channel クライアントに委譲（mock / 本番を隠蔽）
+            channel_client = get_fetch_channel_client(mock=settings.GOOGLE_OAUTH_MOCK)
+            channels: list[ChannelInfo] = channel_client.fetch(access_token)
+
             refresh_token = token_data.get('refresh_token', '')
             expires_at = datetime.now(timezone.utc) + timedelta(
                 seconds=token_data.get('expires_in', 3600)
@@ -109,43 +150,74 @@ class GoogleOAuthCallbackView(LoginRequiredMixin, View):
                 },
             )
 
-            # ── 4. YouTubeチャンネルの保存/更新 ──────────────────────────────
-            now = datetime.now(timezone.utc)
-            already_has_default = YoutubeChannel.objects.filter(
-                user_google_account=google_account,
-                is_default=True,
-            ).exists()
-
-            for i, ch in enumerate(raw_channels):
-                snippet = ch.get('snippet', {})
-                thumbnails = snippet.get('thumbnails', {})
-                thumbnail_url = (
-                    thumbnails.get('default', {}).get('url', '')
-                    or thumbnails.get('medium', {}).get('url', '')
-                )
-                YoutubeChannel.objects.update_or_create(
-                    youtube_channel_id=ch['id'],
-                    defaults={
-                        'user_google_account': google_account,
-                        'title': snippet.get('title', ''),
-                        'handle': snippet.get('customUrl', ''),
-                        'thumbnail_url': thumbnail_url,
-                        'is_default': not already_has_default and i == 0,
-                        'is_active': True,
-                        'fetched_at': now,
-                    },
-                )
-
-            channel_count = len(raw_channels)
-            messages.success(
-                request,
-                f'{google_account.email} の連携が完了しました。'
-                f'チャンネル {channel_count} 件を取得しました。',
-            )
+            # ── 4. チャンネルをすべてDBに自動保存 ────────────────────────────
+            _save_channels(channels, google_account, request.user)
 
         except Exception as e:
             messages.error(request, f'連携中にエラーが発生しました: {e}')
+            if not request.user.is_active:
+                return redirect('accounts:register_connect_google')
+            return redirect('google_auth:channel_list')
 
+        # 登録フロー中（is_active=False）なら有効化して通常バックエンドで再ログイン
+        if not request.user.is_active:
+            request.user.is_active = True
+            request.user.save(update_fields=['is_active'])
+            from django.contrib.auth import login as auth_login
+            auth_login(request, request.user, backend='django.contrib.auth.backends.ModelBackend')
+            return redirect('accounts:dashboard')
+
+        next_url = request.session.pop('oauth_next', None)
+        messages.success(request, 'Googleアカウントを連携しました。')
+        if next_url:
+            return redirect(next_url)
+        return redirect('google_auth:channel_list')
+
+
+class SyncChannelsView(LoginRequiredMixin, View):
+    """
+    既存の OauthToken を使って YouTube チャンネルを再取得・同期する。
+
+    OAuth 認証なしで fetch_channel クライアントを直接呼び出す。
+    Google アカウントが未連携の場合は OAuth フローへフォールバック。
+    """
+    login_url = '/login/'
+
+    def get(self, request):
+        next_url = request.GET.get('next', '')
+
+        google_accounts = list(
+            UserGoogleAccount.objects
+            .filter(user=request.user)
+            .prefetch_related('oauth_token')
+        )
+
+        if not google_accounts:
+            # Google アカウント未連携 → OAuth フローへ
+            if next_url:
+                request.session['oauth_next'] = next_url
+            return redirect('google_auth:oauth_start')
+
+        channel_client = get_fetch_channel_client(mock=settings.GOOGLE_OAUTH_MOCK)
+        total_saved = 0
+        errors = []
+
+        for account in google_accounts:
+            try:
+                token_obj = account.oauth_token
+                access_token = services.decrypt_token(token_obj.access_token_encrypted)
+                channels: list[ChannelInfo] = channel_client.fetch(access_token)
+                total_saved += _save_channels(channels, account, request.user)
+            except Exception as e:
+                errors.append(str(e))
+
+        if errors:
+            messages.error(request, f'チャンネル取得中にエラーが発生しました: {errors[0]}')
+        else:
+            messages.success(request, f'チャンネル情報を同期しました（{total_saved}件）。')
+
+        if next_url:
+            return redirect(next_url)
         return redirect('google_auth:channel_list')
 
 

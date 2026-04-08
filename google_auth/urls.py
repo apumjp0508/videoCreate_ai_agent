@@ -8,6 +8,7 @@ urlpatterns = [
     # チャンネル管理
     path('youtube/channels/', views.ChannelListView.as_view(), name='channel_list'),
     path('youtube/channels/<int:channel_id>/set-default/', views.ChannelSetDefaultView.as_view(), name='channel_set_default'),
+    path('youtube/channels/sync/', views.SyncChannelsView.as_view(), name='channel_sync'),
 
     # YouTube選択画面（動画作成フロー ステップ1）
     path('youtube/select/', views.YoutubeSelectView.as_view(), name='youtube_select'),

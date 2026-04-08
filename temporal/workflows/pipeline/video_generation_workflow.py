@@ -29,6 +29,7 @@ with workflow.unsafe.imports_passed_through():
         FetchMaterialsInput,
         FetchRequestDefinitionInput,
         PollGenerationStatusInput,
+        SaveGeneratedVideoInput,
         SubmitAiRequestInput,
         build_ai_request,
         fetch_ai_config,
@@ -36,6 +37,7 @@ with workflow.unsafe.imports_passed_through():
         fetch_materials,
         fetch_request_definition,
         poll_generation_status,
+        save_generated_video,
         submit_ai_request,
     )
     from temporal.pipeline_types import (
@@ -228,8 +230,24 @@ class VideoGenerationWorkflow:
             input.job_id, video.video_url,
         )
 
+        # ── Step 8: 完成動画を Django media に保存 ─────────────
+        save_result = await workflow.execute_activity(
+            save_generated_video,
+            SaveGeneratedVideoInput(
+                job_id=input.job_id,
+                generation_id=submit_result.generation_id,
+                video_url=video.video_url,
+                video_metadata=video.video_metadata,
+            ),
+            start_to_close_timeout=timedelta(minutes=30),
+        )
+        workflow.logger.info(
+            "save_generated_video done  job_id=%s  generated_video_id=%s  media_url=%s",
+            input.job_id, save_result.generated_video_id, save_result.media_url,
+        )
+
         return VideoGenerationWorkflowOutput(
             job_id=input.job_id,
-            video_url=video.video_url,
+            video_url=save_result.media_url,   # media URL を後続 Workflow に渡す
             generation_id=submit_result.generation_id,
         )

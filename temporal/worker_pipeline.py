@@ -84,10 +84,11 @@ from temporal.activities.video_generation.dummy import (  # noqa: E402
     dummy_fetch_materials,
     dummy_fetch_request_definition,
     dummy_poll_generation_status,
+    dummy_save_generated_video,
     dummy_submit_ai_request,
 )
 
-# DB操作・純粋ロジックを Django 実装に差し替える
+# DB操作・純粋ロジック・動画保存を Django 実装に差し替える
 # （submit_ai_request / poll_generation_status / fetch_generated_video は AI プロバイダー固有のため Dummy のまま）
 from temporal.activities.video_generation.django_service import (  # noqa: E402
     DjangoVideoGenerationService,
@@ -171,6 +172,7 @@ VIDEO_GENERATION_ACTIVITIES = [
     dummy_submit_ai_request,        # Dummy: AIプロバイダー固有
     dummy_poll_generation_status,   # Dummy: AIプロバイダー固有
     dummy_fetch_generated_video,    # Dummy: AIプロバイダー固有
+    dummy_save_generated_video,     # Django 実装: 動画を media に保存 + GeneratedVideo 作成
 ]
 
 VIDEO_METADATA_ACTIVITIES = [
