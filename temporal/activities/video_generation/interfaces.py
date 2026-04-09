@@ -155,6 +155,9 @@ class BuildAiRequestInput:
     config_params: dict[str, Any] = field(default_factory=dict)
     format_settings: dict[str, Any] = field(default_factory=dict)
     video_length_sec: int = 5               # 動画の長さ（秒）
+    # 素材詳細（file_url / description 等を含む）。プロバイダー固有の実装が使用する。
+    images: list[ImageMaterial] = field(default_factory=list)
+    audios: list[AudioMaterial] = field(default_factory=list)
 
 
 @dataclass
@@ -202,6 +205,8 @@ async def submit_ai_request(input: SubmitAiRequestInput) -> SubmitAiRequestOutpu
 class PollGenerationStatusInput:
     job_id: str
     generation_id: str
+    credential_id: int = 0    # API キー取得に使用（Temporal ヒストリに API キー本体は含めない）
+    api_endpoint: str = ""    # プロバイダーのベース URL（例: https://api.pika.art）
 
 
 @dataclass

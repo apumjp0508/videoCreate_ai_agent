@@ -374,6 +374,70 @@ class DjangoVideoGenerationService(DummyVideoGenerationService):
 
 
 # ─────────────────────────────────────────────────────────────
+# LocalVideoGenerationService  ─ ローカル開発用サービス
+# ─────────────────────────────────────────────────────────────
+
+class LocalVideoGenerationService(DjangoVideoGenerationService):
+    """
+    ローカル開発環境用の VideoGeneration サービス。
+
+    外部 AI API（submit / poll / fetch_generated）はダミーのまま使い、
+    save_generated_video だけ本番実装を使う。ただし HTTP ダウンロードは
+    スキップし、プレースホルダーファイルを media に保存する。
+
+    これにより APP_ENV=local でも:
+      - GeneratedVideo レコードが DB に作成される
+      - VideoJob.generated_video が正しく紐づく
+      - 後続の YoutubePublishWorkflow がダミー URL を受け取れる
+    """
+
+    async def save_generated_video(
+        self, input: SaveGeneratedVideoInput
+    ) -> SaveGeneratedVideoOutput:
+        logger.info(
+            "[Local] save_generated_video  job_id=%s  gen_id=%s  url=%s",
+            input.job_id, input.generation_id, input.video_url,
+        )
+        result = await sync_to_async(self._persist_placeholder)(input)
+        logger.info(
+            "[Local] save_generated_video done  job_id=%s  generated_video_id=%d",
+            input.job_id, result.generated_video_id,
+        )
+        return result
+
+    @staticmethod
+    def _persist_placeholder(input: SaveGeneratedVideoInput) -> SaveGeneratedVideoOutput:
+        """
+        HTTP ダウンロードをスキップして空のプレースホルダーファイルを保存する。
+        original_url にダミー URL を記録しておき、media_url はダミー URL をそのまま返す。
+        """
+        from django.core.files.base import ContentFile
+        from jobs.models import GeneratedVideo, VideoJob
+
+        meta = input.video_metadata or {}
+        filename = f"job{input.job_id}_gen{input.generation_id}_placeholder.mp4"
+
+        gv = GeneratedVideo(
+            original_url=input.video_url[:1000],
+            generation_id=input.generation_id,
+            mime_type="video/mp4",
+            file_size_bytes=0,
+            duration_sec=meta.get("duration_sec"),
+            resolution=meta.get("resolution", ""),
+        )
+        # 空ファイルをプレースホルダーとして保存
+        gv.video_file.save(filename, ContentFile(b""), save=True)
+
+        VideoJob.objects.filter(id=int(input.job_id)).update(generated_video=gv)
+
+        # ダミー URL をそのまま media_url として返す（後続ダミー処理が受け取る）
+        return SaveGeneratedVideoOutput(
+            generated_video_id=gv.id,
+            media_url=input.video_url,
+        )
+
+
+# ─────────────────────────────────────────────────────────────
 # モジュールレベルユーティリティ
 # ─────────────────────────────────────────────────────────────
 

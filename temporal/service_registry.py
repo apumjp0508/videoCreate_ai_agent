@@ -81,7 +81,11 @@ def _build_registry() -> list[ActivityGroupConfig]:
     # ── video_generation ──────────────────────────────────────
     from temporal.activities.video_generation import dummy as vg_dummy
     from temporal.activities.video_generation.dummy import DummyVideoGenerationService
-    from temporal.activities.video_generation.django_service import DjangoVideoGenerationService
+    from temporal.activities.video_generation.django_service import (
+        DjangoVideoGenerationService,
+        LocalVideoGenerationService,
+    )
+    from temporal.activities.video_generation.pika import PikaVideoGenerationService
 
     # ── video_metadata ────────────────────────────────────────
     from temporal.activities.video_metadata import dummy as vm_dummy
@@ -96,7 +100,10 @@ def _build_registry() -> list[ActivityGroupConfig]:
     # ── youtube_publish ───────────────────────────────────────
     from temporal.activities.youtube_publish import dummy as yt_dummy
     from temporal.activities.youtube_publish.dummy import DummyYoutubePublishService
-    from temporal.activities.youtube_publish.django_service import DjangoYoutubePublishService
+    from temporal.activities.youtube_publish.django_service import (
+        DjangoYoutubePublishService,
+        LocalYoutubePublishService,
+    )
     from temporal.activities.youtube_publish.youtube_api_service import YoutubeDataApiService
 
     return [
@@ -112,8 +119,11 @@ def _build_registry() -> list[ActivityGroupConfig]:
             name="video_generation",
             dummy_module=vg_dummy,
             services={
-                APP_ENV_LOCAL:   lambda: DummyVideoGenerationService(),
-                APP_ENV_STAGING: lambda: DjangoVideoGenerationService(),
+                # local では LocalVideoGenerationService を使う。
+                # submit / poll / fetch_generated はダミー（外部 AI API を呼ばない）。
+                # save_generated_video はダウンロードをスキップしてプレースホルダーを DB に保存する。
+                APP_ENV_LOCAL:   lambda: LocalVideoGenerationService(),
+                APP_ENV_STAGING: lambda: PikaVideoGenerationService(),
             },
         ),
         ActivityGroupConfig(
@@ -136,7 +146,10 @@ def _build_registry() -> list[ActivityGroupConfig]:
             name="youtube_publish",
             dummy_module=yt_dummy,
             services={
-                APP_ENV_LOCAL:   lambda: DummyYoutubePublishService(),
+                # local でも save_publish_result は DB に書き込む必要があるため
+                # LocalYoutubePublishService を使う。
+                # YouTube API（upload / set_thumbnail 等）はダミーのまま。
+                APP_ENV_LOCAL:   lambda: LocalYoutubePublishService(),
                 APP_ENV_STAGING: lambda: DjangoYoutubePublishService(
                     youtube_api=YoutubeDataApiService()
                 ),

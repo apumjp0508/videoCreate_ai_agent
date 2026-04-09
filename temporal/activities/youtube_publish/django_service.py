@@ -409,3 +409,53 @@ class DjangoYoutubePublishService(DummyYoutubePublishService):
                 "publish_mode": input.publish_mode,
             },
         )
+
+
+# ─────────────────────────────────────────────────────────────
+# LocalYoutubePublishService  ─ ローカル開発用サービス
+# ─────────────────────────────────────────────────────────────
+
+class LocalYoutubePublishService(DummyYoutubePublishService):
+    """
+    ローカル開発環境用の YoutubePublish サービス。
+
+    YouTube API（upload / set_thumbnail / apply_publish_settings）は
+    DummyYoutubePublishService のダミー実装をそのまま使い、
+    DB 書き込み（save_publish_result）だけ本番実装を使う。
+
+    これにより APP_ENV=local でも:
+      - VideoJob.status が COMPLETED に更新される
+      - youtube_video_id / youtube_video_url / completed_at が保存される
+      - VideoJobEvent(JOB_COMPLETED) が記録される
+    """
+
+    async def save_publish_result(
+        self, input: SavePublishResultInput
+    ) -> SavePublishResultOutput:
+        logger.info(
+            "[Local] save_publish_result  job_id=%s  yt_id=%s",
+            input.job_id, input.youtube_video_id,
+        )
+        await sync_to_async(self._save_publish_result_sync)(input)
+        return SavePublishResultOutput(success=True)
+
+    @staticmethod
+    def _save_publish_result_sync(input: SavePublishResultInput) -> None:
+        from jobs.models import EventType, JobStatus, VideoJob, VideoJobEvent
+
+        VideoJob.objects.filter(id=int(input.job_id)).update(
+            status=JobStatus.COMPLETED,
+            youtube_video_id=input.youtube_video_id,
+            youtube_video_url=input.youtube_video_url,
+            completed_at=datetime.now(tz=timezone.utc),
+        )
+        VideoJobEvent.objects.create(
+            job_id=int(input.job_id),
+            event_type=EventType.JOB_COMPLETED,
+            message=f"[Local] 完了: {input.youtube_video_url}",
+            payload_json={
+                "youtube_video_id": input.youtube_video_id,
+                "youtube_video_url": input.youtube_video_url,
+                "publish_mode":     input.publish_mode,
+            },
+        )

@@ -122,6 +122,8 @@ class VideoGenerationWorkflow:
                 config_params=ai_config.params,
                 format_settings=request_def.format_settings,
                 video_length_sec=input.video_length,
+                images=materials.images,
+                audios=materials.audios,
             ),
             start_to_close_timeout=timedelta(minutes=2),
         )
@@ -174,6 +176,8 @@ class VideoGenerationWorkflow:
                 PollGenerationStatusInput(
                     job_id=input.job_id,
                     generation_id=submit_result.generation_id,
+                    credential_id=ai_config.credential_id,
+                    api_endpoint=ai_config.api_endpoint,
                 ),
                 start_to_close_timeout=timedelta(minutes=1),
             )

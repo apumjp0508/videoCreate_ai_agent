@@ -58,10 +58,14 @@ class DummyVideoGenerationService:
         )
 
     async def fetch_ai_config(self, input: FetchAiConfigInput) -> FetchAiConfigOutput:
-        logger.info("[Dummy] fetch_ai_config  job_id=%s  config_id=%s", input.job_id, input.video_ai_config_id)
+        logger.info(
+            "[Dummy] fetch_ai_config  job_id=%s  credential_id=%s  model_id=%s",
+            input.job_id, input.credential_id, input.model_id,
+        )
         await asyncio.sleep(0.05)
         return FetchAiConfigOutput(
-            config_id=input.video_ai_config_id,
+            config_id=input.credential_id,
+            credential_id=input.credential_id,
             model_name="dummy-video-model-v1",
             api_endpoint="https://api.dummy-ai.example.com/v1/generate",
             params={"quality": "high", "duration": 60},
