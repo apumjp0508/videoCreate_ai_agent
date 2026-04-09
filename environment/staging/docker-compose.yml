@@ -1,4 +1,4 @@
-name: videocreate_dev
+name: videocreate_staging
 
 services:
   # ─────────────────────────────────────────
@@ -7,9 +7,9 @@ services:
   db:
     image: postgres:16
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_staging:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5433:5432"
     env_file:
       - .env
     environment:
@@ -33,7 +33,7 @@ services:
     volumes:
       - ../../:/app
     ports:
-      - "8000:8000"
+      - "8001:8000"
     env_file:
       - .env
     depends_on:
@@ -46,7 +46,7 @@ services:
   temporal-db:
     image: postgres:16
     volumes:
-      - temporal_postgres_data:/var/lib/postgresql/data
+      - temporal_postgres_data_staging:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: ${TEMPORAL_DB_USER:-temporal}
       POSTGRES_PASSWORD: ${TEMPORAL_DB_PASSWORD:-temporal}
@@ -63,7 +63,7 @@ services:
   temporal:
     image: temporalio/auto-setup:1.25.2
     ports:
-      - "7233:7233"
+      - "7234:7233"
     environment:
       DB: postgres12
       DB_PORT: 5432
@@ -86,10 +86,10 @@ services:
   temporal-ui:
     image: temporalio/ui:2.31.2
     ports:
-      - "8080:8080"
+      - "8081:8080"
     environment:
       TEMPORAL_ADDRESS: temporal:7233
-      TEMPORAL_CORS_ORIGINS: http://localhost:8080
+      TEMPORAL_CORS_ORIGINS: http://localhost:8081
     depends_on:
       - temporal
 
@@ -115,5 +115,5 @@ services:
         condition: service_healthy
 
 volumes:
-  postgres_data:
-  temporal_postgres_data:
+  postgres_data_staging:
+  temporal_postgres_data_staging:
