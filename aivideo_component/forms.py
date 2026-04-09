@@ -35,6 +35,11 @@ class ContentSelectForm(forms.Form):
         ],
         initial='private',
     )
+    video_length = forms.IntegerField(
+        label='動画の長さ（秒）',
+        min_value=1,
+        widget=forms.NumberInput(attrs={'placeholder': '例: 5'}),
+    )
 
     def __init__(self, *args, image_choices=None, audio_choices=None, **kwargs):
         super().__init__(*args, **kwargs)

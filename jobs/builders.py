@@ -113,6 +113,7 @@ class VideoPipelineInputBuilder:
             oauth_record_id=oauth_record_id,
             youtube_channel_id=channel.youtube_channel_id,
             publish_mode=job.publish_mode,
+            video_length=job.video_length,
         )
 
     def _get_oauth_record_id(self, channel) -> int:

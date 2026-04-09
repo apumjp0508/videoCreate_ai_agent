@@ -48,6 +48,7 @@ class JobCreatorProtocol(Protocol):
         image_ids: list[int],
         audio_ids: list[int],
         publish_mode: str,
+        video_length: int,
         image_descriptions: dict[int, str],
         audio_descriptions: dict[int, str],
     ) -> Any:
@@ -77,6 +78,7 @@ class VideoJobCreator:
         image_ids: list[int] | None = None,
         audio_ids: list[int] | None = None,
         publish_mode: str = 'private',
+        video_length: int = 5,
         image_descriptions: dict[int, str] | None = None,
         audio_descriptions: dict[int, str] | None = None,
     ) -> VideoJob:
@@ -105,6 +107,7 @@ class VideoJobCreator:
                 google_account=channel.user_google_account,
                 youtube_channel=channel,
                 publish_mode=publish_mode,
+                video_length=video_length,
             )
 
             VideoJobAsset.objects.bulk_create([

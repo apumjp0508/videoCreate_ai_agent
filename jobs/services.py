@@ -60,6 +60,7 @@ def create_video_job(
     image_ids: list[int] | None = None,
     audio_ids: list[int] | None = None,
     publish_mode: str = 'private',
+    video_length: int = 5,
     image_descriptions: dict[int, str] | None = None,
     audio_descriptions: dict[int, str] | None = None,
     creator: JobCreatorProtocol | None = None,
@@ -86,6 +87,7 @@ def create_video_job(
         image_ids=image_ids or [],
         audio_ids=audio_ids or [],
         publish_mode=publish_mode,
+        video_length=video_length,
         image_descriptions=image_descriptions or {},
         audio_descriptions=audio_descriptions or {},
     )

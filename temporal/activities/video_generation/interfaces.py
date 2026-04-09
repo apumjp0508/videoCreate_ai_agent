@@ -154,6 +154,7 @@ class BuildAiRequestInput:
     audio_ids: list[int] = field(default_factory=list)
     config_params: dict[str, Any] = field(default_factory=dict)
     format_settings: dict[str, Any] = field(default_factory=dict)
+    video_length_sec: int = 5               # 動画の長さ（秒）
 
 
 @dataclass

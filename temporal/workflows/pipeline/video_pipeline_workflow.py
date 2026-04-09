@@ -68,6 +68,7 @@ class VideoPipelineWorkflow:
                 prompt_id=input.prompt_id,
                 image_ids=input.image_ids,
                 audio_ids=input.audio_ids,
+                video_length=input.video_length,
             ),
             id=f"{input.job_id}-video-gen",
             task_queue=task_queue,

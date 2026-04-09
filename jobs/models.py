@@ -174,6 +174,7 @@ class VideoJob(models.Model):
         help_text='video_ai_models の id',
     )
     publish_mode = models.CharField(max_length=20, default='private')
+    video_length = models.IntegerField(help_text='動画の長さ（秒）')
 
     # ── YouTube 連携 ─────────────────────────────────────────
     google_account = models.ForeignKey(

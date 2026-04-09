@@ -582,6 +582,16 @@
         {% endif %}
       </div>
 
+      <!-- 動画の長さ -->
+      <div class="field-group">
+        <label class="field-label" for="{{ form.video_length.id_for_label }}">動画の長さ（秒）</label>
+        {{ form.video_length }}
+        <p class="field-hint">生成する動画の長さを秒単位で入力してください。</p>
+        {% if form.video_length.errors %}
+          <div class="field-errors">{{ form.video_length.errors }}</div>
+        {% endif %}
+      </div>
+
       <!-- ボタン -->
       <div class="form-actions">
         <a href="{% url 'google_auth:youtube_select' %}" class="btn-back">← チャンネル選択に戻る</a>

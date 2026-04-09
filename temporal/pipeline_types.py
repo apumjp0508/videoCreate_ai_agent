@@ -44,6 +44,7 @@ class PipelineInput:
     # title / description / tags / thumbnail_url は YoutubePublishWorkflow 内の
     # fetch_publish_settings Activity が DB から取得するため、ここでは渡さない
     publish_mode: str = "private"           # "private" | "unlisted" | "public"
+    video_length: int = 5                   # 動画の長さ（秒）
 
 
 @dataclass
@@ -68,6 +69,7 @@ class VideoGenerationWorkflowInput:
     prompt_id: int
     image_ids: list[int] = field(default_factory=list)
     audio_ids: list[int] = field(default_factory=list)
+    video_length: int = 5                   # 動画の長さ（秒）
 
 
 @dataclass

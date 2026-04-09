@@ -121,6 +121,7 @@ class VideoGenerationWorkflow:
                 audio_ids=materials.audio_ids,
                 config_params=ai_config.params,
                 format_settings=request_def.format_settings,
+                video_length_sec=input.video_length,
             ),
             start_to_close_timeout=timedelta(minutes=2),
         )

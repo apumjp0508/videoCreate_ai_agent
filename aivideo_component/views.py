@@ -111,6 +111,7 @@ class ContentSelectView(View):
                     'image_ids':          image_ids,
                     'audio_ids':          audio_ids,
                     'publish_mode':       form.cleaned_data['publish_mode'],
+                    'video_length':       form.cleaned_data['video_length'],
                     'image_descriptions': {str(k): v for k, v in image_descriptions.items()},
                     'audio_descriptions': {str(k): v for k, v in audio_descriptions.items()},
                 }
@@ -595,6 +596,7 @@ class AIProviderSelectView(View):
                 image_ids=[int(x) for x in selection.get('image_ids', []) if x],
                 audio_ids=[int(x) for x in selection.get('audio_ids', []) if x],
                 publish_mode=selection.get('publish_mode', 'private'),
+                video_length=int(selection.get('video_length', 5)),
                 image_descriptions={int(k): v for k, v in selection.get('image_descriptions', {}).items()},
                 audio_descriptions={int(k): v for k, v in selection.get('audio_descriptions', {}).items()},
             )
