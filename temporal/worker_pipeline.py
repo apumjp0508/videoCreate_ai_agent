@@ -58,25 +58,26 @@ import django  # noqa: E402
 
 django.setup()
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 from django.conf import settings  # noqa: E402
 from temporalio.worker import Worker  # noqa: E402
 
 # ─────────────────────────────────────────────────────────────
-# job_progress: Django 実装に差し替え（進捗・イベント記録）
+# サービス注入: APP_ENV に応じて dummy/本サービスを自動選択
 # ─────────────────────────────────────────────────────────────
-from temporal.activities.job_progress import dummy as jp_dummy  # noqa: E402
+from temporal.service_registry import configure_services  # noqa: E402
+
+_active_env = configure_services()
+logger.info("service_registry applied  env=%s", _active_env)
+
+# ─────────────────────────────────────────────────────────────
+# Activity 関数インポート（サービス注入後に行う）
+# ─────────────────────────────────────────────────────────────
 from temporal.activities.job_progress.dummy import (  # noqa: E402
     dummy_update_job_progress,
 )
-from temporal.activities.job_progress.django_service import (  # noqa: E402
-    DjangoJobProgressService,
-)
-jp_dummy._service = DjangoJobProgressService()
-
-# ─────────────────────────────────────────────────────────────
-# video_generation: ダミー Activity 関数のインポート
-# ─────────────────────────────────────────────────────────────
-from temporal.activities.video_generation import dummy as vg_dummy  # noqa: E402
 from temporal.activities.video_generation.dummy import (  # noqa: E402
     dummy_build_ai_request,
     dummy_fetch_ai_config,
@@ -87,43 +88,13 @@ from temporal.activities.video_generation.dummy import (  # noqa: E402
     dummy_save_generated_video,
     dummy_submit_ai_request,
 )
-
-# DB操作・純粋ロジック・動画保存を Django 実装に差し替える
-# （submit_ai_request / poll_generation_status / fetch_generated_video は AI プロバイダー固有のため Dummy のまま）
-from temporal.activities.video_generation.django_service import (  # noqa: E402
-    DjangoVideoGenerationService,
-)
-vg_dummy._service = DjangoVideoGenerationService()
-
-# ─────────────────────────────────────────────────────────────
-# video_metadata: OpenAI 実装に差し替え（Whisper + GPT）
-# ─────────────────────────────────────────────────────────────
-from temporal.activities.video_metadata import dummy as vm_dummy  # noqa: E402
 from temporal.activities.video_metadata.dummy import (  # noqa: E402
     dummy_analyze_video_content,
     dummy_generate_video_metadata,
 )
-from temporal.activities.video_metadata.openai_service import (  # noqa: E402
-    OpenAIVideoMetadataService,
-)
-vm_dummy._service = OpenAIVideoMetadataService()
-
-# ─────────────────────────────────────────────────────────────
-# thumbnail_generation: OpenAI GPT-4o Vision 実装に差し替え
-# ─────────────────────────────────────────────────────────────
-from temporal.activities.thumbnail_generation import dummy as th_dummy  # noqa: E402
 from temporal.activities.thumbnail_generation.dummy import (  # noqa: E402
     dummy_generate_thumbnail,
 )
-from temporal.activities.thumbnail_generation.openai_service import (  # noqa: E402
-    OpenAIThumbnailService,
-)
-th_dummy._service = OpenAIThumbnailService()
-
-# ─────────────────────────────────────────────────────────────
-# youtube_publish: ダミー Activity 関数のインポート
-# ─────────────────────────────────────────────────────────────
-from temporal.activities.youtube_publish import dummy as yt_dummy  # noqa: E402
 from temporal.activities.youtube_publish.dummy import (  # noqa: E402
     dummy_apply_publish_settings,
     dummy_build_upload_request,
@@ -136,15 +107,6 @@ from temporal.activities.youtube_publish.dummy import (  # noqa: E402
     dummy_upload_video_to_youtube,
 )
 
-# DB操作・YouTube API 呼び出しを Django 実装に差し替える
-from temporal.activities.youtube_publish.django_service import (  # noqa: E402
-    DjangoYoutubePublishService,
-)
-from temporal.activities.youtube_publish.youtube_api_service import (  # noqa: E402
-    YoutubeDataApiService,
-)
-yt_dummy._service = DjangoYoutubePublishService(youtube_api=YoutubeDataApiService())
-
 # ─────────────────────────────────────────────────────────────
 # Workflow 登録
 # ─────────────────────────────────────────────────────────────
@@ -152,9 +114,6 @@ from temporal.client import get_temporal_client  # noqa: E402
 from temporal.workflows.pipeline.video_generation_workflow import VideoGenerationWorkflow  # noqa: E402
 from temporal.workflows.pipeline.video_pipeline_workflow import VideoPipelineWorkflow  # noqa: E402
 from temporal.workflows.pipeline.youtube_publish_workflow import YoutubePublishWorkflow  # noqa: E402
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────────────────────
 # Activity リスト（追加・差し替えはここで行う）

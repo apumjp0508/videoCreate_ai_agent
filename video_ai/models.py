@@ -43,6 +43,25 @@ class UserVideoAiCredential(models.Model):
         choices=TEST_STATUS_CHOICES,
         default=TEST_STATUS_UNTESTED,
     )
+    # ── APIキー検証結果 ──────────────────────────────────────
+    validation_http_status = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text='検証リクエストのHTTPステータスコード（未検証時はNULL）',
+    )
+    validation_endpoint = models.CharField(
+        max_length=500,
+        null=True,
+        blank=True,
+        help_text='検証に使用したエンドポイントURL',
+    )
+    validation_error_code = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text='プロバイダーが返したエラーコード（成功時はNULL）',
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
