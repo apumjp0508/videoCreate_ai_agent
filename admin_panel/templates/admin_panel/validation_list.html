@@ -1,0 +1,76 @@
+{% extends "admin_panel/base.html" %}
+
+{% block title %}バリデーション設定一覧{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>バリデーション設定一覧</h1>
+  <p>各AIプロバイダーの入力コンテンツ要件（画像・音声の制約値）を管理します</p>
+</div>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>プロバイダー</th>
+        <th>キー</th>
+        <th>画像 MIME</th>
+        <th>音声対応</th>
+        <th>設定状態</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for provider in providers %}
+      {% with config=provider.validation_config %}
+      <tr>
+        <td>{{ provider.id }}</td>
+        <td>{{ provider.provider_name }}</td>
+        <td><code>{{ provider.provider_key }}</code></td>
+        <td style="font-size: 0.8rem; color: #555;">
+          {% if config %}
+            {{ config.image_allowed_mime_types|join:", " }}
+          {% else %}
+            <span style="color: #999;">-</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if config %}
+            {% if config.audio_is_supported %}
+              <span class="badge badge-green">対応</span>
+            {% else %}
+              <span class="badge badge-gray">非対応</span>
+            {% endif %}
+          {% else %}
+            <span style="color: #999;">-</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if config %}
+            <span class="badge badge-blue">設定済み</span>
+          {% else %}
+            <span class="badge badge-red">未設定</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if config %}
+            <a href="{% url 'admin_panel:validation_config' provider_id=provider.id %}" class="btn btn-sm" style="background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;">編集</a>
+            <form method="post" action="{% url 'admin_panel:validation_config_delete' provider_id=provider.id %}"
+                  style="display:inline;" onsubmit="return confirm('{{ provider.provider_name }} のバリデーション設定を削除しますか？')">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger btn-sm">削除</button>
+            </form>
+          {% else %}
+            <a href="{% url 'admin_panel:validation_config_create' provider_id=provider.id %}" class="btn btn-primary btn-sm">+ 設定を作成</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endwith %}
+      {% empty %}
+      <tr><td colspan="7" style="text-align: center; color: #999;">プロバイダーがいません</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

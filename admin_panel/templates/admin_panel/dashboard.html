@@ -9,16 +9,21 @@
 </div>
 
 <div style="display: flex; gap: 20px; margin-bottom: 24px;">
-  <div class="card" style="flex: 1; text-align: center;">
+  <a href="{% url 'admin_panel:user_list' %}" class="stat-card card" style="flex: 1; text-align: center; text-decoration: none; color: inherit; cursor: pointer; transition: box-shadow 0.15s, transform 0.15s;">
     <div style="font-size: 2.5rem; font-weight: bold; color: #2563eb;">{{ user_count }}</div>
     <div style="color: #666; margin-top: 4px;">登録ユーザー数</div>
-    <a href="{% url 'admin_panel:user_list' %}" class="btn btn-secondary btn-sm" style="margin-top: 12px;">ユーザー管理</a>
-  </div>
-  <div class="card" style="flex: 1; text-align: center;">
+    <div style="margin-top: 12px; font-size: 0.8rem; color: #2563eb;">ユーザー管理 →</div>
+  </a>
+  <a href="{% url 'admin_panel:provider_list' %}" class="stat-card card" style="flex: 1; text-align: center; text-decoration: none; color: inherit; cursor: pointer; transition: box-shadow 0.15s, transform 0.15s;">
     <div style="font-size: 2.5rem; font-weight: bold; color: #059669;">{{ provider_count }}</div>
     <div style="color: #666; margin-top: 4px;">AIプロバイダー数</div>
-    <a href="{% url 'admin_panel:provider_list' %}" class="btn btn-secondary btn-sm" style="margin-top: 12px;">プロバイダー管理</a>
-  </div>
+    <div style="margin-top: 12px; font-size: 0.8rem; color: #059669;">プロバイダー管理 →</div>
+  </a>
+  <a href="{% url 'admin_panel:validation_list' %}" class="stat-card card" style="flex: 1; text-align: center; text-decoration: none; color: inherit; cursor: pointer; transition: box-shadow 0.15s, transform 0.15s;">
+    <div style="font-size: 2.5rem; font-weight: bold; color: #7c3aed;">{{ validation_count }}</div>
+    <div style="color: #666; margin-top: 4px;">バリデーション設定数</div>
+    <div style="margin-top: 12px; font-size: 0.8rem; color: #7c3aed;">バリデーション設定一覧 →</div>
+  </a>
 </div>
 
 <div class="card">
@@ -28,4 +33,11 @@
     <a href="{% url 'admin_panel:provider_create' %}" class="btn btn-primary">+ プロバイダー追加</a>
   </div>
 </div>
+
+<style>
+  .stat-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.13);
+    transform: translateY(-2px);
+  }
+</style>
 {% endblock %}

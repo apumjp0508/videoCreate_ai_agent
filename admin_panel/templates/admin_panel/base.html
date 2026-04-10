@@ -92,7 +92,8 @@
     <a href="{% url 'admin_panel:user_list' %}" {% if 'user' in request.resolver_match.url_name %}class="active"{% endif %}>ユーザー一覧</a>
 
     <div class="sidebar-section">AIサービス管理</div>
-    <a href="{% url 'admin_panel:provider_list' %}" {% if 'provider' in request.resolver_match.url_name %}class="active"{% endif %}>プロバイダー一覧</a>
+    <a href="{% url 'admin_panel:provider_list' %}" {% if 'provider' in request.resolver_match.url_name or 'model' in request.resolver_match.url_name %}class="active"{% endif %}>プロバイダー一覧</a>
+    <a href="{% url 'admin_panel:validation_list' %}" {% if 'validation' in request.resolver_match.url_name %}class="active"{% endif %}>バリデーション設定</a>
   </nav>
   <div class="sidebar-footer">
     {{ user.email }}

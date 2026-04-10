@@ -31,4 +31,10 @@ urlpatterns = [
     path('providers/<int:provider_id>/models/<int:model_id>/edit/', views.ModelEditView.as_view(), name='model_edit'),
     path('providers/<int:provider_id>/models/<int:model_id>/delete/', views.ModelDeleteView.as_view(), name='model_delete'),
     path('providers/<int:provider_id>/models/<int:model_id>/toggle/', views.ModelToggleView.as_view(), name='model_toggle'),
+
+    # バリデーション設定管理
+    path('validation/', views.ValidationConfigListView.as_view(), name='validation_list'),
+    path('providers/<int:provider_id>/validation/', views.ValidationConfigView.as_view(), name='validation_config'),
+    path('providers/<int:provider_id>/validation/create/', views.ValidationConfigCreateView.as_view(), name='validation_config_create'),
+    path('providers/<int:provider_id>/validation/delete/', views.ValidationConfigDeleteView.as_view(), name='validation_config_delete'),
 ]

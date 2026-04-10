@@ -4,9 +4,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 
 from accounts.models import User
-from video_ai.models import VideoAiModel, VideoAiProvider
+from video_ai.models import VideoAiModel, VideoAiProvider, VideoAiProviderValidationConfig
 
-from .forms import AdminLoginForm, ProviderForm, UserCreateForm, UserEditForm, VideoAiModelForm
+from .forms import AdminLoginForm, ProviderForm, UserCreateForm, UserEditForm, ValidationConfigForm, VideoAiModelForm
 from .mixins import StaffRequiredMixin
 
 
@@ -44,9 +44,11 @@ class AdminDashboardView(StaffRequiredMixin, View):
     def get(self, request):
         user_count = User.objects.count()
         provider_count = VideoAiProvider.objects.count()
+        validation_count = VideoAiProviderValidationConfig.objects.count()
         return render(request, 'admin_panel/dashboard.html', {
             'user_count': user_count,
             'provider_count': provider_count,
+            'validation_count': validation_count,
         })
 
 
@@ -256,3 +258,81 @@ class ModelToggleView(StaffRequiredMixin, View):
         status = '有効' if model.is_active else '無効'
         messages.success(request, f'「{model.model_name}」を{status}にしました。')
         return redirect('admin_panel:model_list', provider_id=provider_id)
+
+
+# ---------- バリデーション設定管理 ----------
+
+class ValidationConfigListView(StaffRequiredMixin, View):
+    """全プロバイダーのバリデーション設定一覧を表示する。"""
+
+    def get(self, request):
+        providers = VideoAiProvider.objects.order_by('id').select_related('validation_config')
+        return render(request, 'admin_panel/validation_list.html', {'providers': providers})
+
+
+class ValidationConfigView(StaffRequiredMixin, View):
+    """プロバイダーのバリデーション設定を表示・編集する（存在しなければ作成フォームへ）。"""
+
+    def get(self, request, provider_id):
+        provider = get_object_or_404(VideoAiProvider, id=provider_id)
+        try:
+            config = provider.validation_config
+        except VideoAiProviderValidationConfig.DoesNotExist:
+            return redirect('admin_panel:validation_config_create', provider_id=provider_id)
+        form = ValidationConfigForm(instance=config)
+        return render(request, 'admin_panel/validation_config_form.html', {
+            'provider': provider,
+            'form': form,
+            'action': 'edit',
+        })
+
+    def post(self, request, provider_id):
+        provider = get_object_or_404(VideoAiProvider, id=provider_id)
+        config = get_object_or_404(VideoAiProviderValidationConfig, provider=provider)
+        form = ValidationConfigForm(request.POST, instance=config)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'{provider.provider_name} のバリデーション設定を更新しました。')
+            return redirect('admin_panel:validation_list')
+        return render(request, 'admin_panel/validation_config_form.html', {
+            'provider': provider,
+            'form': form,
+            'action': 'edit',
+        })
+
+
+class ValidationConfigCreateView(StaffRequiredMixin, View):
+    def get(self, request, provider_id):
+        provider = get_object_or_404(VideoAiProvider, id=provider_id)
+        if hasattr(provider, 'validation_config'):
+            return redirect('admin_panel:validation_config', provider_id=provider_id)
+        form = ValidationConfigForm()
+        return render(request, 'admin_panel/validation_config_form.html', {
+            'provider': provider,
+            'form': form,
+            'action': 'create',
+        })
+
+    def post(self, request, provider_id):
+        provider = get_object_or_404(VideoAiProvider, id=provider_id)
+        form = ValidationConfigForm(request.POST)
+        if form.is_valid():
+            config = form.save(commit=False)
+            config.provider = provider
+            config.save()
+            messages.success(request, f'{provider.provider_name} のバリデーション設定を作成しました。')
+            return redirect('admin_panel:validation_list')
+        return render(request, 'admin_panel/validation_config_form.html', {
+            'provider': provider,
+            'form': form,
+            'action': 'create',
+        })
+
+
+class ValidationConfigDeleteView(StaffRequiredMixin, View):
+    def post(self, request, provider_id):
+        provider = get_object_or_404(VideoAiProvider, id=provider_id)
+        config = get_object_or_404(VideoAiProviderValidationConfig, provider=provider)
+        config.delete()
+        messages.success(request, f'{provider.provider_name} のバリデーション設定を削除しました。')
+        return redirect('admin_panel:validation_list')
