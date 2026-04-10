@@ -28,6 +28,10 @@ class AudioExtractionError(Exception):
     """ffmpeg による音声抽出に失敗した場合。"""
 
 
+class NoAudioStreamError(AudioExtractionError):
+    """動画に音声ストリームが存在しない場合。"""
+
+
 async def extract_audio_from_video(
     video_path: str | Path,
     *,
@@ -83,8 +87,21 @@ async def extract_audio_from_video(
 
     if proc.returncode != 0:
         output_path.unlink(missing_ok=True)
+        stderr_text = stderr.decode(errors="replace")
+        # 音声ストリームが存在しない場合は専用例外を送出
+        stderr_lower = stderr_text.lower()
+        no_audio_signals = (
+            "no audio" in stderr_lower
+            or "does not contain any stream" in stderr_lower
+            or "output file #0 does not contain any stream" in stderr_lower
+            or ("invalid argument" in stderr_lower and proc.returncode == 234)
+        )
+        if no_audio_signals:
+            raise NoAudioStreamError(
+                f"No audio stream found in video (returncode={proc.returncode})"
+            )
         raise AudioExtractionError(
-            f"ffmpeg failed (returncode={proc.returncode}): {stderr.decode(errors='replace')}"
+            f"ffmpeg failed (returncode={proc.returncode}): {stderr_text}"
         )
 
     size_bytes = output_path.stat().st_size

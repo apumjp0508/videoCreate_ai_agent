@@ -110,3 +110,17 @@ PIKA_IMAGE_ALLOWED_MIME: frozenset[str] = frozenset({
 })
 #: 入力素材として不適切なケースを弾く最低辺長 (px)
 PIKA_IMAGE_MIN_DIMENSION: int = 300
+
+# ════════════════════════════════════════════════════════════════
+# Replicate (minimax/video-01) — 画像
+# first_frame_image として使用。URL 入力のみ対応。
+# 出力動画のアスペクト比は入力画像に合わせられる。
+# ════════════════════════════════════════════════════════════════
+REPLICATE_IMAGE_ALLOWED_MIME: frozenset[str] = frozenset({
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+})
+#: 入力素材として不適切なケースを弾く最低辺長 (px)
+REPLICATE_IMAGE_MIN_DIMENSION: int = 300

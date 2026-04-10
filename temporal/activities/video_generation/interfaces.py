@@ -221,6 +221,8 @@ class PollGenerationStatusOutput:
     is_failed: bool = False
     # 完成している場合のみ設定される
     video_url: str = ""
+    # 失敗した場合のエラー詳細
+    error_message: str = ""
 
 
 @activity.defn

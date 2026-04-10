@@ -88,11 +88,15 @@ class BaseApiKeyValidator(ABC):
         GET リクエストを送り ApiKeyValidationResult を返す汎用メソッド。
         接続エラーは is_valid=False, http_status=0 として扱う。
         """
+        logger.info("API key validation request: GET %s", url)
         req = urllib.request.Request(url, headers=headers, method="GET")
         try:
             with urllib.request.urlopen(req, timeout=self.REQUEST_TIMEOUT) as resp:
+                status = resp.status
+                resp.read()  # レスポンスボディを読み切って接続を安全にクローズ
+                logger.info("API key validation response: status=%d  url=%s", status, url)
                 return ApiKeyValidationResult(
-                    http_status=resp.status,
+                    http_status=status,
                     validation_endpoint=url,
                     error_code=None,
                     is_valid=True,
@@ -100,6 +104,10 @@ class BaseApiKeyValidator(ABC):
         except urllib.error.HTTPError as exc:
             body_bytes = exc.read() if exc.fp else b""
             error_code = self._extract_error_code(body_bytes)
+            logger.warning(
+                "API key validation HTTP error: status=%d  url=%s  error_code=%s",
+                exc.code, url, error_code,
+            )
             return ApiKeyValidationResult(
                 http_status=exc.code,
                 validation_endpoint=url,
@@ -107,7 +115,7 @@ class BaseApiKeyValidator(ABC):
                 is_valid=False,
             )
         except urllib.error.URLError as exc:
-            logger.warning("API key validation request failed: %s", exc)
+            logger.warning("API key validation URL error: url=%s  reason=%s", url, exc.reason)
             return ApiKeyValidationResult(
                 http_status=0,
                 validation_endpoint=url,
@@ -115,7 +123,7 @@ class BaseApiKeyValidator(ABC):
                 is_valid=False,
             )
         except Exception as exc:
-            logger.warning("API key validation unexpected error: %s", exc)
+            logger.warning("API key validation unexpected error: url=%s  error=%s", url, exc)
             return ApiKeyValidationResult(
                 http_status=0,
                 validation_endpoint=url,
@@ -220,12 +228,69 @@ class KlingApiKeyValidator(BaseApiKeyValidator):
             return None
 
 
+class ReplicateApiKeyValidator(BaseApiKeyValidator):
+    """
+    Replicate: GET /models でモデル一覧を取得してトークンの有効性を検証する。
+    api_base_url が "https://api.replicate.com/v1" のため、
+    _build_url との結合後は "https://api.replicate.com/v1/models" になる。
+
+    urllib では User-Agent "Python-urllib/x.x" が Replicate にブロックされ 403 になるため
+    httpx を使用する。
+    """
+
+    VALIDATION_PATH = "/models"
+
+    def validate(self, api_key: str, base_url: str) -> ApiKeyValidationResult:
+        import httpx
+
+        url = self._build_url(base_url, self.VALIDATION_PATH)
+        logger.info("Replicate API key validation: GET %s", url)
+        try:
+            response = httpx.get(
+                url,
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=self.REQUEST_TIMEOUT,
+                follow_redirects=True,
+            )
+            logger.info(
+                "Replicate API key validation response: status=%d  url=%s",
+                response.status_code, url,
+            )
+            if response.is_success:
+                return ApiKeyValidationResult(
+                    http_status=response.status_code,
+                    validation_endpoint=url,
+                    error_code=None,
+                    is_valid=True,
+                )
+            error_code = self._extract_error_code(response.content)
+            logger.warning(
+                "Replicate API key validation failed: status=%d  error_code=%s",
+                response.status_code, error_code,
+            )
+            return ApiKeyValidationResult(
+                http_status=response.status_code,
+                validation_endpoint=url,
+                error_code=error_code,
+                is_valid=False,
+            )
+        except Exception as exc:
+            logger.warning("Replicate API key validation error: url=%s  error=%s", url, exc)
+            return ApiKeyValidationResult(
+                http_status=0,
+                validation_endpoint=url,
+                error_code=str(exc),
+                is_valid=False,
+            )
+
+
 # ─────────────────────── レジストリ & ファクトリー ───────────────────────
 
 _VALIDATOR_REGISTRY: dict[str, BaseApiKeyValidator] = {
-    "runway": RunwayApiKeyValidator(),
-    "pika":   PikaApiKeyValidator(),
-    "kling":  KlingApiKeyValidator(),
+    "runway":    RunwayApiKeyValidator(),
+    "pika":      PikaApiKeyValidator(),
+    "kling":     KlingApiKeyValidator(),
+    "replicate": ReplicateApiKeyValidator(),
 }
 
 

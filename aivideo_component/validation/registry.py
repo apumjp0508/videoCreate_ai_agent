@@ -18,14 +18,16 @@ from aivideo_component.validation.protocol import (
 )
 from aivideo_component.validation.providers.kling import KlingContentValidator
 from aivideo_component.validation.providers.pika import PikaContentValidator
+from aivideo_component.validation.providers.replicate import ReplicateContentValidator
 from aivideo_component.validation.providers.runway import RunwayContentValidator
 
 # ── プロバイダーキー → バリデーターのマッピング ─────────────────
 # forms.py の AI_PROVIDERS の id と一致させること
 _REGISTRY: dict[str, ContentValidatorProtocol] = {
-    'runway': RunwayContentValidator(),
-    'pika':   PikaContentValidator(),
-    'kling':  KlingContentValidator(),
+    'runway':    RunwayContentValidator(),
+    'pika':      PikaContentValidator(),
+    'kling':     KlingContentValidator(),
+    'replicate': ReplicateContentValidator(),
 }
 
 

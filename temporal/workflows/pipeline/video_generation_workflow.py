@@ -189,6 +189,7 @@ class VideoGenerationWorkflow:
             if poll_result.is_failed:
                 raise RuntimeError(
                     f"AI generation failed  job_id={input.job_id}  generation_id={submit_result.generation_id}"
+                    + (f"  error={poll_result.error_message}" if poll_result.error_message else "")
                 )
 
             if poll_result.is_complete:
