@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 from google_auth.models import YoutubeChannel
 from jobs.services import VideoAiConfigNotFoundError, WorkflowStartError, create_video_job, start_workflow_for_job
+from .asset_filter import filter_assets_for_provider
 from .forms import (
     AudioEditForm, AudioUploadForm,
     ContentSelectForm,
@@ -21,9 +22,61 @@ from .metadata.service import apply_audio_metadata, apply_image_metadata
 from .models import GeneratedAudio, GeneratedImage
 from .validation.protocol import AudioMeta, ContentValidationInput, ImageMeta
 from .validation.registry import UnknownProviderError, validate_content
+from .validation.service import ProviderConfigNotFoundError as AssetFilterConfigError
 
-# セッションキー: ContentSelectView で保存した選択内容を AIProviderSelectView で参照する
+# セッションキー: AIProviderSelectView で保存したプロバイダー選択を ContentSelectView で参照する
+_PROVIDER_SELECTION_SESSION_KEY = 'aivideo_provider_selection'
+# セッションキー: ContentSelectView で保存したコンテンツ選択を Job 作成時に参照する
 _CONTENT_SELECTION_SESSION_KEY = 'aivideo_content_selection'
+
+
+def _build_validation_input(
+    provider_key: str,
+    selection: dict,
+) -> 'ContentValidationInput':
+    """
+    セッションの選択内容と provider_key から ContentValidationInput を組み立てる。
+    モデルから必要なメタデータを取得してバリデーター用の型に変換する。
+    """
+    image_meta = None
+    image_ids = selection.get('image_ids') or []
+    if image_ids:
+        try:
+            img = GeneratedImage.objects.get(pk=int(image_ids[0]))
+            image_meta = ImageMeta(
+                image_id=img.pk,
+                mime_type=img.mime_type,
+                file_size_bytes=img.file_size_bytes,
+                width=img.width,
+                height=img.height,
+                aspect_ratio=img.aspect_ratio,
+            )
+        except GeneratedImage.DoesNotExist:
+            pass
+
+    audio_meta = None
+    audio_ids = selection.get('audio_ids') or []
+    if audio_ids:
+        try:
+            aud = GeneratedAudio.objects.get(pk=int(audio_ids[0]))
+            audio_meta = AudioMeta(
+                audio_id=aud.pk,
+                mime_type=aud.mime_type,
+                file_size_bytes=aud.file_size_bytes,
+                duration_sec=aud.duration_sec,
+                sample_rate=aud.sample_rate,
+                channels=aud.channels,
+                codec=aud.codec,
+            )
+        except GeneratedAudio.DoesNotExist:
+            pass
+
+    return ContentValidationInput(
+        provider_key=provider_key,
+        script=selection.get('script', ''),
+        image=image_meta,
+        audio=audio_meta,
+    )
 
 
 class ContentSelectView(View):
@@ -41,15 +94,39 @@ class ContentSelectView(View):
 
     def _build_context(self, request, channel_id):
         channel = self._get_channel(request, channel_id)
-        images = GeneratedImage.objects.filter(youtube_channel=channel)
-        audios = GeneratedAudio.objects.filter(youtube_channel=channel)
-        image_choices = [(img.pk, img.title) for img in images]
-        audio_choices = [(aud.pk, aud.title) for aud in audios]
+        images = list(GeneratedImage.objects.filter(youtube_channel=channel))
+        audios = list(GeneratedAudio.objects.filter(youtube_channel=channel))
+
+        # プロバイダーが選択されていればフィルタリングを実行する
+        filter_result = None
+        provider_selection = request.session.get(_PROVIDER_SELECTION_SESSION_KEY)
+        if provider_selection:
+            try:
+                filter_result = filter_assets_for_provider(
+                    provider_selection['provider_key'],
+                    images,
+                    audios,
+                )
+            except AssetFilterConfigError:
+                # ValidationConfig 未設定のプロバイダーは全件 valid 扱いにする
+                pass
+            except Exception:
+                logger.exception('asset_filter で予期しないエラー')
+
+        # フォームの choices: valid のみを選択可にする（invalid は disabled で表示）
+        if filter_result is not None:
+            image_choices = [(fi.image.pk, fi.image.title) for fi in filter_result.valid_images]
+            audio_choices = [(fa.audio.pk, fa.audio.title) for fa in filter_result.valid_audios]
+        else:
+            image_choices = [(img.pk, img.title) for img in images]
+            audio_choices = [(aud.pk, aud.title) for aud in audios]
+
         return {
             'channel': channel,
             'channel_id': channel_id,
             'images': images,
             'audios': audios,
+            'filter_result': filter_result,
             'has_images': bool(image_choices),
             'has_audios': bool(audio_choices),
             'image_choices': image_choices,
@@ -59,7 +136,11 @@ class ContentSelectView(View):
     def get(self, request, channel_id: int):
         if not request.user.is_authenticated:
             return redirect('accounts:login')
+        provider_selection = request.session.get(_PROVIDER_SELECTION_SESSION_KEY)
+        if not provider_selection:
+            return redirect('aivideo_component:provider_select', channel_id=channel_id)
         ctx = self._build_context(request, channel_id)
+        ctx['provider_selection'] = provider_selection
         ctx['form'] = ContentSelectForm(
             image_choices=ctx['image_choices'],
             audio_choices=ctx['audio_choices'],
@@ -71,7 +152,13 @@ class ContentSelectView(View):
     def post(self, request, channel_id: int):
         if not request.user.is_authenticated:
             return redirect('accounts:login')
+
+        provider_selection = request.session.get(_PROVIDER_SELECTION_SESSION_KEY)
+        if not provider_selection:
+            return redirect('aivideo_component:provider_select', channel_id=channel_id)
+
         ctx = self._build_context(request, channel_id)
+        ctx['provider_selection'] = provider_selection
         form = ContentSelectForm(
             request.POST,
             image_choices=ctx['image_choices'],
@@ -81,42 +168,35 @@ class ContentSelectView(View):
         ctx['image_state'] = []
         ctx['audio_state'] = []
 
-        if form.is_valid():
-            image_ids = [int(x) for x in form.cleaned_data.get('image') or []]
-            audio_ids = [int(x) for x in form.cleaned_data.get('audio') or []]
+        def _render(f):
+            return render(request, 'aivideo_component/content_select.html', {**ctx, 'form': f})
 
-            # 各素材のdescriptionを収集・バリデーション（必須）
-            image_descriptions: dict[int, str] = {}
-            image_desc_errors: set[int] = set()
-            for img_id in image_ids:
-                desc = request.POST.get(f'image_description_{img_id}', '').strip()
-                if desc:
-                    image_descriptions[img_id] = desc
-                else:
-                    image_desc_errors.add(img_id)
+        if not form.is_valid():
+            return _render(form)
 
-            audio_descriptions: dict[int, str] = {}
-            audio_desc_errors: set[int] = set()
-            for aud_id in audio_ids:
-                desc = request.POST.get(f'audio_description_{aud_id}', '').strip()
-                if desc:
-                    audio_descriptions[aud_id] = desc
-                else:
-                    audio_desc_errors.add(aud_id)
+        image_ids = [int(x) for x in form.cleaned_data.get('image') or []]
+        audio_ids = [int(x) for x in form.cleaned_data.get('audio') or []]
 
-            if not image_desc_errors and not audio_desc_errors:
-                # 選択内容をセッションに保存して AI プロバイダー選択画面へ渡す
-                request.session[_CONTENT_SELECTION_SESSION_KEY] = {
-                    'script':             form.cleaned_data['script'],
-                    'image_ids':          image_ids,
-                    'audio_ids':          audio_ids,
-                    'publish_mode':       form.cleaned_data['publish_mode'],
-                    'video_length':       form.cleaned_data['video_length'],
-                    'image_descriptions': {str(k): v for k, v in image_descriptions.items()},
-                    'audio_descriptions': {str(k): v for k, v in audio_descriptions.items()},
-                }
-                return redirect('aivideo_component:provider_select', channel_id=channel_id)
+        # 各素材のdescriptionを収集・バリデーション（必須）
+        image_descriptions: dict[int, str] = {}
+        image_desc_errors: set[int] = set()
+        for img_id in image_ids:
+            desc = request.POST.get(f'image_description_{img_id}', '').strip()
+            if desc:
+                image_descriptions[img_id] = desc
+            else:
+                image_desc_errors.add(img_id)
 
+        audio_descriptions: dict[int, str] = {}
+        audio_desc_errors: set[int] = set()
+        for aud_id in audio_ids:
+            desc = request.POST.get(f'audio_description_{aud_id}', '').strip()
+            if desc:
+                audio_descriptions[aud_id] = desc
+            else:
+                audio_desc_errors.add(aud_id)
+
+        if image_desc_errors or audio_desc_errors:
             # description 未入力エラー → 再描画用にstate を構築
             ctx['image_state'] = [
                 {
@@ -135,8 +215,186 @@ class ContentSelectView(View):
                 for aud_id in audio_ids
             ]
             ctx['has_desc_errors'] = True
+            return _render(form)
 
-        return render(request, 'aivideo_component/content_select.html', ctx)
+        selection = {
+            'script':             form.cleaned_data['script'],
+            'image_ids':          image_ids,
+            'audio_ids':          audio_ids,
+            'publish_mode':       form.cleaned_data['publish_mode'],
+            'video_length':       form.cleaned_data['video_length'],
+            'image_descriptions': {str(k): v for k, v in image_descriptions.items()},
+            'audio_descriptions': {str(k): v for k, v in audio_descriptions.items()},
+        }
+
+        provider_key  = provider_selection['provider_key']
+        model_id      = provider_selection['model_id']
+        credential_id = provider_selection['credential_id']
+
+        # ── 最終バリデーション: 全選択素材 × プロバイダー互換チェック ──
+        # DB から実体を取得（チャンネル所有権チェック込み）
+        selected_images = list(
+            GeneratedImage.objects.filter(
+                pk__in=image_ids,
+                youtube_channel_id=channel_id,
+                youtube_channel__user_google_account__user=request.user,
+            )
+        )
+        selected_audios = list(
+            GeneratedAudio.objects.filter(
+                pk__in=audio_ids,
+                youtube_channel_id=channel_id,
+                youtube_channel__user_google_account__user=request.user,
+            )
+        )
+
+        # 取得件数が一致しない = 不正な ID が含まれている（他チャンネル・存在しない）
+        if len(selected_images) != len(image_ids):
+            messages.error(request, '選択された画像に無効なものが含まれています。')
+            return _render(form)
+        if len(selected_audios) != len(audio_ids):
+            messages.error(request, '選択された音声に無効なものが含まれています。')
+            return _render(form)
+
+        # プロバイダー互換チェック（全件）
+        try:
+            asset_result = filter_assets_for_provider(provider_key, selected_images, selected_audios)
+        except AssetFilterConfigError as exc:
+            logger.warning('AssetFilterConfigError: %s', exc)
+            messages.error(request, '選択された AI プロバイダーのバリデーション設定が見つかりません。')
+            if settings.DEBUG:
+                messages.error(request, f'[DEV] {traceback.format_exc()}')
+            return _render(form)
+        except Exception:
+            logger.exception('最終バリデーション中に予期しないエラー')
+            messages.error(request, '素材の検証中にエラーが発生しました。時間をおいて再試行してください。')
+            if settings.DEBUG:
+                messages.error(request, f'[DEV] {traceback.format_exc()}')
+            return _render(form)
+
+        # invalid な素材があればエラーを素材名付きで表示して差し戻す
+        has_invalid = False
+        for fi in asset_result.invalid_images:
+            for err in fi.errors:
+                messages.error(request, f'画像「{fi.image.title}」: {err}')
+            has_invalid = True
+        for fa in asset_result.invalid_audios:
+            for err in fa.errors:
+                messages.error(request, f'音声「{fa.audio.title}」: {err}')
+            has_invalid = True
+        if has_invalid:
+            return _render(form)
+
+        # 警告は通知して続行可能
+        for fi in asset_result.valid_images:
+            for w in fi.warnings:
+                messages.warning(request, f'画像「{fi.image.title}」: {w}')
+        for fa in asset_result.valid_audios:
+            for w in fa.warnings:
+                messages.warning(request, f'音声「{fa.audio.title}」: {w}')
+
+        # ── バリデーション通過 → Job 作成 ────────────────────────
+        try:
+            job = create_video_job(
+                user=request.user,
+                channel_id=channel_id,
+                credential_id=credential_id,
+                model_id=model_id,
+                script=selection['script'],
+                image_ids=image_ids,
+                audio_ids=audio_ids,
+                publish_mode=selection['publish_mode'],
+                video_length=int(selection['video_length']),
+                image_descriptions=image_descriptions,
+                audio_descriptions=audio_descriptions,
+            )
+        except VideoAiConfigNotFoundError as exc:
+            logger.error('VideoAiConfigNotFoundError: %s', exc)
+            messages.error(request, str(exc))
+            if settings.DEBUG:
+                messages.error(request, f'[DEV] {traceback.format_exc()}')
+            return _render(form)
+
+        # ── Temporal Workflow 起動 ────────────────────────────────
+        try:
+            start_workflow_for_job(job)
+        except WorkflowStartError as exc:
+            logger.error('WorkflowStartError job_id=%s: %s', job.id, exc)
+            messages.error(request, f'動画生成の開始に失敗しました。しばらく経ってから再試行してください。（{exc}）')
+            if settings.DEBUG:
+                messages.error(request, f'[DEV] {traceback.format_exc()}')
+            return _render(form)
+
+        # ── 成功 → セッションをクリアして完了 ────────────────────
+        request.session.pop(_PROVIDER_SELECTION_SESSION_KEY, None)
+        request.session.pop(_CONTENT_SELECTION_SESSION_KEY, None)
+        messages.success(request, f'動画生成ジョブを作成しました（Job #{job.id}）')
+        return redirect('accounts:dashboard')
+
+
+# ─────────────────────── Hub / Media Manage ───────────────────────
+
+def _crud_redirect(request, channel_id: int):
+    """
+    画像・音声の CRUD 完了後のリダイレクト先を決定する。
+    プロバイダーが選択済み（content_select フロー中）なら content_select へ。
+    未選択（素材準備フロー中）なら media_manage へ。
+    """
+    if request.session.get(_PROVIDER_SELECTION_SESSION_KEY):
+        return redirect('aivideo_component:content_select', channel_id=channel_id)
+    return redirect('aivideo_component:media_manage', channel_id=channel_id)
+
+
+class HubView(View):
+    """
+    チャンネル選択直後のハブ画面。
+    「生成AIを選ぶ」か「素材を準備する」かを選択する。
+    """
+
+    def get(self, request, channel_id: int):
+        if not request.user.is_authenticated:
+            return redirect('accounts:login')
+        channel = get_object_or_404(
+            YoutubeChannel,
+            id=channel_id,
+            user_google_account__user=request.user,
+        )
+        # ハブに戻ったらプロバイダー選択をリセット（やり直し対応）
+        request.session.pop(_PROVIDER_SELECTION_SESSION_KEY, None)
+        request.session.pop(_CONTENT_SELECTION_SESSION_KEY, None)
+
+        image_count = GeneratedImage.objects.filter(youtube_channel=channel).count()
+        audio_count = GeneratedAudio.objects.filter(youtube_channel=channel).count()
+        return render(request, 'aivideo_component/hub.html', {
+            'channel': channel,
+            'channel_id': channel_id,
+            'image_count': image_count,
+            'audio_count': audio_count,
+        })
+
+
+class MediaManageView(View):
+    """
+    画像・音声の管理専用画面（フォームなし）。
+    素材の追加・編集・削除を行い、完了後はハブに戻る。
+    """
+
+    def get(self, request, channel_id: int):
+        if not request.user.is_authenticated:
+            return redirect('accounts:login')
+        channel = get_object_or_404(
+            YoutubeChannel,
+            id=channel_id,
+            user_google_account__user=request.user,
+        )
+        images = GeneratedImage.objects.filter(youtube_channel=channel)
+        audios = GeneratedAudio.objects.filter(youtube_channel=channel)
+        return render(request, 'aivideo_component/media_manage.html', {
+            'channel': channel,
+            'channel_id': channel_id,
+            'images': images,
+            'audios': audios,
+        })
 
 
 # ─────────────────────── Image CRUD ───────────────────────
@@ -169,7 +427,7 @@ class ImageUploadView(View):
             )
             apply_image_metadata(instance, form.cleaned_data['file'])
             messages.success(request, '画像を保存しました。')
-            return redirect('aivideo_component:content_select', channel_id=channel_id)
+            return _crud_redirect(request, channel_id)
 
         return render(request, 'aivideo_component/image_upload.html', {
             'form': form,
@@ -215,7 +473,7 @@ class ImageEditView(View):
             if new_file:
                 apply_image_metadata(image, new_file)
             messages.success(request, '画像を更新しました。')
-            return redirect('aivideo_component:content_select', channel_id=channel_id)
+            return _crud_redirect(request, channel_id)
 
         return render(request, 'aivideo_component/image_edit.html', {
             'form': form,
@@ -251,7 +509,7 @@ class ImageDeleteView(View):
         image.image_file.delete(save=False)
         image.delete()
         messages.success(request, '画像を削除しました。')
-        return redirect('aivideo_component:content_select', channel_id=channel_id)
+        return _crud_redirect(request, channel_id)
 
 
 # ─────────────────────── Audio CRUD ───────────────────────
@@ -284,7 +542,7 @@ class AudioUploadView(View):
             )
             apply_audio_metadata(instance, form.cleaned_data['file'])
             messages.success(request, '音声を保存しました。')
-            return redirect('aivideo_component:content_select', channel_id=channel_id)
+            return _crud_redirect(request, channel_id)
 
         return render(request, 'aivideo_component/audio_upload.html', {
             'form': form,
@@ -329,7 +587,7 @@ class AudioEditView(View):
             if new_file:
                 apply_audio_metadata(audio, new_file)
             messages.success(request, '音声を更新しました。')
-            return redirect('aivideo_component:content_select', channel_id=channel_id)
+            return _crud_redirect(request, channel_id)
 
         return render(request, 'aivideo_component/audio_edit.html', {
             'form': form,
@@ -365,7 +623,7 @@ class AudioDeleteView(View):
         audio.audio_file.delete(save=False)
         audio.delete()
         messages.success(request, '音声を削除しました。')
-        return redirect('aivideo_component:content_select', channel_id=channel_id)
+        return _crud_redirect(request, channel_id)
 
 
 # ─────────────────────── AI Provider Select ───────────────────────
@@ -452,7 +710,7 @@ class AIProviderSelectView(View):
         if selection:
             for p in provider_data:
                 try:
-                    validation_input = self._build_validation_input(p['id'], selection)
+                    validation_input = _build_validation_input(p['id'], selection)
                     result = validate_content(validation_input)
                     if result.is_unsupported:
                         p['status'] = 'unavailable'
@@ -470,56 +728,6 @@ class AIProviderSelectView(View):
                     pass  # 事前バリデーション失敗は無視して表示を継続
 
         return provider_data
-
-    def _build_validation_input(
-        self,
-        provider_key: str,
-        selection: dict,
-    ) -> ContentValidationInput:
-        """
-        セッションの選択内容と provider_key から ContentValidationInput を組み立てる。
-        モデルから必要なメタデータを取得してバリデーター用の型に変換する。
-        """
-        # バリデーションは先頭の1件で代表チェックする
-        image_meta = None
-        image_ids = selection.get('image_ids') or []
-        if image_ids:
-            try:
-                img = GeneratedImage.objects.get(pk=int(image_ids[0]))
-                image_meta = ImageMeta(
-                    image_id=img.pk,
-                    mime_type=img.mime_type,
-                    file_size_bytes=img.file_size_bytes,
-                    width=img.width,
-                    height=img.height,
-                    aspect_ratio=img.aspect_ratio,
-                )
-            except GeneratedImage.DoesNotExist:
-                pass
-
-        audio_meta = None
-        audio_ids = selection.get('audio_ids') or []
-        if audio_ids:
-            try:
-                aud = GeneratedAudio.objects.get(pk=int(audio_ids[0]))
-                audio_meta = AudioMeta(
-                    audio_id=aud.pk,
-                    mime_type=aud.mime_type,
-                    file_size_bytes=aud.file_size_bytes,
-                    duration_sec=aud.duration_sec,
-                    sample_rate=aud.sample_rate,
-                    channels=aud.channels,
-                    codec=aud.codec,
-                )
-            except GeneratedAudio.DoesNotExist:
-                pass
-
-        return ContentValidationInput(
-            provider_key=provider_key,
-            script=selection.get('script', ''),
-            image=image_meta,
-            audio=audio_meta,
-        )
 
     def get(self, request, channel_id: int):
         if not request.user.is_authenticated:
@@ -565,59 +773,10 @@ class AIProviderSelectView(View):
             messages.error(request, '選択されたモデルはプロバイダーに対応していません。')
             return _render(form)
 
-        # ── コンテンツバリデーション ──────────────────────────────
-        selection = request.session.get(_CONTENT_SELECTION_SESSION_KEY, {})
-        try:
-            validation_input = self._build_validation_input(provider_key, selection)
-            result = validate_content(validation_input)
-        except UnknownProviderError as exc:
-            logger.warning('UnknownProviderError: %s', exc)
-            messages.error(request, '選択された AI プロバイダーは現在サポートされていません。')
-            if settings.DEBUG:
-                messages.error(request, f'[DEV] {traceback.format_exc()}')
-            return _render(form)
-
-        if not result.is_valid:
-            for issue in result.errors:
-                messages.error(request, f'[{issue.field}] {issue.message}')
-            return _render(form)
-
-        for issue in result.warnings:
-            messages.warning(request, f'[{issue.field}] {issue.message}')
-
-        # ── バリデーション通過 → Job 作成 ────────────────────────
-        try:
-            job = create_video_job(
-                user=request.user,
-                channel_id=channel_id,
-                credential_id=credential_id,
-                model_id=model_id,
-                script=selection.get('script', ''),
-                image_ids=[int(x) for x in selection.get('image_ids', []) if x],
-                audio_ids=[int(x) for x in selection.get('audio_ids', []) if x],
-                publish_mode=selection.get('publish_mode', 'private'),
-                video_length=int(selection.get('video_length', 5)),
-                image_descriptions={int(k): v for k, v in selection.get('image_descriptions', {}).items()},
-                audio_descriptions={int(k): v for k, v in selection.get('audio_descriptions', {}).items()},
-            )
-        except VideoAiConfigNotFoundError as exc:
-            logger.error('VideoAiConfigNotFoundError: %s', exc)
-            messages.error(request, str(exc))
-            if settings.DEBUG:
-                messages.error(request, f'[DEV] {traceback.format_exc()}')
-            return _render(form)
-
-        # ── Temporal Workflow 起動 ────────────────────────────────
-        try:
-            start_workflow_for_job(job)
-        except WorkflowStartError as exc:
-            logger.error('WorkflowStartError job_id=%s: %s', job.id, exc)
-            messages.error(request, f'動画生成の開始に失敗しました。しばらく経ってから再試行してください。（{exc}）')
-            if settings.DEBUG:
-                messages.error(request, f'[DEV] {traceback.format_exc()}')
-            return _render(form)
-
-        # ── 成功 → セッションをクリアして完了 ────────────────────
-        request.session.pop(_CONTENT_SELECTION_SESSION_KEY, None)
-        messages.success(request, f'動画生成ジョブを作成しました（Job #{job.id}）')
-        return redirect('accounts:dashboard')
+        # ── プロバイダー選択をセッションに保存してコンテンツ選択へ ──
+        request.session[_PROVIDER_SELECTION_SESSION_KEY] = {
+            'provider_key':  provider_key,
+            'model_id':      model_id,
+            'credential_id': credential_id,
+        }
+        return redirect('aivideo_component:content_select', channel_id=channel_id)

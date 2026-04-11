@@ -5,7 +5,13 @@ from . import views
 app_name = 'aivideo_component'
 
 urlpatterns = [
-    # 動画作成フロー ステップ2: コンテンツ選択（一覧兼操作ハブ）
+    # 動画作成フロー ステップ1: ハブ（生成AI選択 or 素材管理）
+    path('content/select/<int:channel_id>/hub/', views.HubView.as_view(), name='creation_hub'),
+
+    # 素材管理（フォームなし）
+    path('content/select/<int:channel_id>/media/', views.MediaManageView.as_view(), name='media_manage'),
+
+    # 動画作成フロー ステップ3: コンテンツ選択
     path('content/select/<int:channel_id>/', views.ContentSelectView.as_view(), name='content_select'),
 
     # 画像 CRUD

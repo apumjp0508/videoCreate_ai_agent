@@ -255,6 +255,24 @@
   }
   .btn-back:hover { color: #94a3b8; }
 
+  /* ===== Filter result (使用不可理由) ===== */
+  .is-filtered-invalid { opacity: 0.65; }
+  .is-filtered-invalid .asset-check-label { cursor: not-allowed; }
+  .asset-filter-reasons {
+    padding: 0.4rem 0.75rem 0.55rem;
+    border-top: 1px solid rgba(248,113,113,0.2);
+    background: rgba(248,113,113,0.05);
+  }
+  .asset-filter-reasons p {
+    font-size: 0.73rem; color: #fca5a5; line-height: 1.55; margin: 0;
+  }
+  .asset-filter-reasons p + p { margin-top: 0.2rem; }
+  .asset-filter-warnings {
+    border-top-color: rgba(250,204,21,0.2);
+    background: rgba(250,204,21,0.04);
+  }
+  .asset-filter-warnings p { color: #fde68a; }
+
   /* ===== Per-asset description (Job作成フォーム内) ===== */
   .asset-select-list { display: flex; flex-direction: column; gap: 0.5rem; margin: 0.25rem 0 0; }
   .asset-select-item {
@@ -298,6 +316,27 @@
   .asset-desc-wrap textarea.has-error { border-color: rgba(248,113,113,0.5); }
   .asset-desc-error { margin-top: 0.3rem; font-size: 0.73rem; color: #f87171; }
 
+  /* ===== Flow step indicator ===== */
+  .flow-steps {
+    display: flex; align-items: center;
+    margin-bottom: 2rem; overflow-x: auto; padding-bottom: 2px;
+  }
+  .flow-step { display: flex; align-items: center; gap: 0.45rem; white-space: nowrap; }
+  .step-node {
+    width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.62rem; font-weight: 800;
+  }
+  .step-label { font-size: 0.74rem; font-weight: 600; }
+  .flow-connector { flex: 1; min-width: 20px; height: 1px; margin: 0 0.4rem; background: rgba(255,255,255,0.1); }
+  .flow-step.done .step-node   { background: rgba(74,222,128,0.18); border: 1.5px solid rgba(74,222,128,0.45); color: #4ade80; }
+  .flow-step.done .step-label  { color: #4ade80; }
+  .flow-step.done  + .flow-connector { background: rgba(74,222,128,0.3); }
+  .flow-step.active .step-node  { background: linear-gradient(135deg,#6337ff,#00c8ff); color: #fff; border: none; }
+  .flow-step.active .step-label { color: #f1f5f9; font-weight: 700; }
+  .flow-step.upcoming .step-node  { background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,255,255,0.12); color: #475569; }
+  .flow-step.upcoming .step-label { color: #475569; }
+
   @media (max-width: 640px) {
     .top-header { padding: 0 1rem; }
     .page-body { padding: 1.5rem 1rem 3rem; }
@@ -338,11 +377,36 @@
     <span class="sep">›</span>
     <a href="{% url 'google_auth:youtube_select' %}">チャンネル選択</a>
     <span class="sep">›</span>
+    <a href="{% url 'aivideo_component:provider_select' channel_id=channel_id %}">生成AI選択</a>
+    <span class="sep">›</span>
     <span>コンテンツ選択</span>
   </nav>
 
+  <!-- フローインジケータ -->
+  <div class="flow-steps">
+    <div class="flow-step done">
+      <div class="step-node">✓</div>
+      <span class="step-label">チャンネル選択</span>
+    </div>
+    <div class="flow-connector"></div>
+    <div class="flow-step done">
+      <div class="step-node">✓</div>
+      <span class="step-label">動画準備</span>
+    </div>
+    <div class="flow-connector"></div>
+    <div class="flow-step done">
+      <div class="step-node">✓</div>
+      <span class="step-label">AI選択</span>
+    </div>
+    <div class="flow-connector"></div>
+    <div class="flow-step active">
+      <div class="step-node">4</div>
+      <span class="step-label">素材・設定</span>
+    </div>
+  </div>
+
   <!-- ページタイトル -->
-  <p class="page-eyebrow">Step 2 / 2</p>
+  <p class="page-eyebrow">Step 4</p>
   <h1 class="page-title">コンテンツを選択してください</h1>
   <p class="page-sub">スクリプト・画像・音声を設定して動画を作成します。</p>
 
@@ -352,130 +416,14 @@
     チャンネル：{{ channel.title }}（YouTube ID: {{ channel.youtube_channel_id }}）
   </div>
 
-  <!-- ===== 画像管理セクション ===== -->
-  <div class="section">
-    <div class="section-header">
-      <h2 class="section-title">
-        🖼 画像
-        <span class="badge-count">{{ images|length }}</span>
-      </h2>
-      <a href="{% url 'aivideo_component:image_upload' channel_id=channel_id %}" class="btn-add">
-        ＋ 画像を追加
-      </a>
-    </div>
-
-    {% if images %}
-      <div class="item-list">
-        {% for img in images %}
-          <div class="item-row" data-vstatus="{{ img.validation_status }}">
-            <div class="item-icon img-icon">🖼</div>
-            <div class="item-info">
-              <div class="item-title-row">
-                <span class="item-title">{{ img.title }}</span>
-                {% if img.validation_status == 'valid' %}
-                  <span class="vstatus-badge vstatus-valid">✓ 使用可能</span>
-                {% elif img.validation_status == 'invalid' %}
-                  <span class="vstatus-badge vstatus-invalid">✕ 使用不可</span>
-                {% elif img.validation_status == 'warning' %}
-                  <span class="vstatus-badge vstatus-warning">⚠ 要確認</span>
-                {% else %}
-                  <span class="vstatus-badge vstatus-pending">― 未検証</span>
-                {% endif %}
-              </div>
-              <div class="item-meta">
-                {% if img.mime_type %}{{ img.mime_type }} · {% endif %}
-                {% if img.width and img.height %}{{ img.width }}×{{ img.height }}px · {% endif %}
-                {% if img.file_size_bytes %}{{ img.file_size_bytes|filesizeformat }} · {% endif %}
-                {% if img.aspect_ratio %}{{ img.aspect_ratio }} · {% endif %}
-                {{ img.created_at|date:"Y/m/d H:i" }}
-              </div>
-              {% if img.validation_status == 'invalid' and img.validation_message %}
-                <div style="font-size:0.7rem;color:#f87171;margin-top:0.2rem;line-height:1.5;">
-                  {{ img.validation_message|truncatechars:120 }}
-                </div>
-              {% elif img.validation_status == 'warning' and img.validation_message %}
-                <div style="font-size:0.7rem;color:#fde047;margin-top:0.2rem;line-height:1.5;">
-                  {{ img.validation_message|truncatechars:120 }}
-                </div>
-              {% endif %}
-            </div>
-            <div class="item-actions">
-              <a href="{% url 'aivideo_component:image_edit' channel_id=channel_id pk=img.pk %}" class="btn-edit">編集</a>
-              <a href="{% url 'aivideo_component:image_delete' channel_id=channel_id pk=img.pk %}" class="btn-delete">削除</a>
-            </div>
-          </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="empty-state">
-        画像がまだ登録されていません。「＋ 画像を追加」から追加してください。
-      </div>
-    {% endif %}
+  <!-- 選択中AI -->
+  {% if provider_selection %}
+  <div class="channel-badge" style="background:rgba(0,200,255,0.08);border-color:rgba(0,200,255,0.3);color:#38bdf8;margin-bottom:2rem;">
+    <span class="dot" style="background:#00c8ff;"></span>
+    生成AI：{{ provider_selection.provider_key }}（モデルID: {{ provider_selection.model_id }}）
+    <a href="{% url 'aivideo_component:provider_select' channel_id=channel_id %}" style="margin-left:0.75rem;font-size:0.75rem;color:#94a3b8;text-decoration:none;">変更</a>
   </div>
-
-  <!-- ===== 音声管理セクション ===== -->
-  <div class="section">
-    <div class="section-header">
-      <h2 class="section-title">
-        🎵 音声 / BGM
-        <span class="badge-count">{{ audios|length }}</span>
-      </h2>
-      <a href="{% url 'aivideo_component:audio_upload' channel_id=channel_id %}" class="btn-add">
-        ＋ 音声を追加
-      </a>
-    </div>
-
-    {% if audios %}
-      <div class="item-list">
-        {% for aud in audios %}
-          <div class="item-row" data-vstatus="{{ aud.validation_status }}">
-            <div class="item-icon aud-icon">🎵</div>
-            <div class="item-info">
-              <div class="item-title-row">
-                <span class="item-title">{{ aud.title }}</span>
-                {% if aud.validation_status == 'valid' %}
-                  <span class="vstatus-badge vstatus-valid">✓ 使用可能</span>
-                {% elif aud.validation_status == 'invalid' %}
-                  <span class="vstatus-badge vstatus-invalid">✕ 使用不可</span>
-                {% elif aud.validation_status == 'warning' %}
-                  <span class="vstatus-badge vstatus-warning">⚠ 要確認</span>
-                {% else %}
-                  <span class="vstatus-badge vstatus-pending">― 未検証</span>
-                {% endif %}
-              </div>
-              <div class="item-meta">
-                {% if aud.mime_type %}{{ aud.mime_type }} · {% endif %}
-                {% if aud.duration_sec %}{{ aud.duration_sec|floatformat:1 }}秒 · {% endif %}
-                {% if aud.sample_rate %}{{ aud.sample_rate }}Hz · {% endif %}
-                {% if aud.channels %}{{ aud.channels }}ch · {% endif %}
-                {% if aud.file_size_bytes %}{{ aud.file_size_bytes|filesizeformat }} · {% endif %}
-                {{ aud.created_at|date:"Y/m/d H:i" }}
-              </div>
-              {% if aud.validation_status == 'invalid' and aud.validation_message %}
-                <div style="font-size:0.7rem;color:#f87171;margin-top:0.2rem;line-height:1.5;">
-                  {{ aud.validation_message|truncatechars:120 }}
-                </div>
-              {% elif aud.validation_status == 'warning' and aud.validation_message %}
-                <div style="font-size:0.7rem;color:#fde047;margin-top:0.2rem;line-height:1.5;">
-                  {{ aud.validation_message|truncatechars:120 }}
-                </div>
-              {% endif %}
-            </div>
-            <div class="item-actions">
-              <a href="{% url 'aivideo_component:audio_edit' channel_id=channel_id pk=aud.pk %}" class="btn-edit">編集</a>
-              <a href="{% url 'aivideo_component:audio_delete' channel_id=channel_id pk=aud.pk %}" class="btn-delete">削除</a>
-            </div>
-          </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="empty-state">
-        音声がまだ登録されていません。「＋ 音声を追加」から追加してください。
-      </div>
-    {% endif %}
-  </div>
-
-  <hr class="page-divider">
+  {% endif %}
 
   <!-- ===== 動画作成フォーム ===== -->
   <div class="form-card">
@@ -497,32 +445,72 @@
 
       <!-- 画像選択 -->
       <div class="field-group">
-        <label class="field-label">使用する画像（最大10枚）</label>
-        {% if has_images %}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+          <label class="field-label" style="margin-bottom:0;">使用する画像（最大10枚）</label>
+          <a href="{% url 'aivideo_component:media_manage' channel_id=channel_id %}" style="font-size:0.75rem;color:#a78bfa;text-decoration:none;display:inline-flex;align-items:center;gap:0.3rem;">🗂 素材管理</a>
+        </div>
+        {% if has_images or filter_result.invalid_images %}
           <div class="asset-select-list" id="image-checkbox-list">
-            {% for img in images %}
-            <div class="asset-select-item" data-asset-id="{{ img.pk }}">
-              <label class="asset-check-label">
-                <input type="checkbox" name="image" value="{{ img.pk }}" class="asset-checkbox">
-                <span class="asset-name">{{ img.title }}</span>
-              </label>
-              <div class="asset-desc-wrap" style="display:none;">
-                <p class="asset-desc-label">このJobでの用途・使い方 <span class="req">*</span></p>
-                <textarea
-                  name="image_description_{{ img.pk }}"
-                  rows="2"
-                  placeholder="例: オープニングシーンの背景として使用。横長構図で空の比率が高い。"
-                ></textarea>
-                <div class="asset-desc-error" style="display:none;">用途説明を入力してください。</div>
+            {% if filter_result %}
+              {% for fi in filter_result.images %}
+              <div class="asset-select-item{% if not fi.is_valid %} is-filtered-invalid{% endif %}" data-asset-id="{{ fi.image.pk }}">
+                <label class="asset-check-label">
+                  <input type="checkbox" name="image" value="{{ fi.image.pk }}" class="asset-checkbox"
+                         {% if not fi.is_valid %}disabled{% endif %}>
+                  <span class="asset-name">{{ fi.image.title }}</span>
+                  {% if not fi.is_valid %}
+                    <span class="vstatus-badge vstatus-invalid" style="margin-left:auto;flex-shrink:0;">✕ 使用不可</span>
+                  {% elif fi.warnings %}
+                    <span class="vstatus-badge vstatus-warning" style="margin-left:auto;flex-shrink:0;">⚠ 要確認</span>
+                  {% endif %}
+                </label>
+                {% if not fi.is_valid %}
+                  <div class="asset-filter-reasons">
+                    {% for err in fi.errors %}<p>{{ err }}</p>{% endfor %}
+                  </div>
+                {% elif fi.warnings %}
+                  <div class="asset-filter-reasons asset-filter-warnings">
+                    {% for w in fi.warnings %}<p>{{ w }}</p>{% endfor %}
+                  </div>
+                {% endif %}
+                {% if fi.is_valid %}
+                <div class="asset-desc-wrap" style="display:none;">
+                  <p class="asset-desc-label">このJobでの用途・使い方 <span class="req">*</span></p>
+                  <textarea
+                    name="image_description_{{ fi.image.pk }}"
+                    rows="2"
+                    placeholder="例: オープニングシーンの背景として使用。横長構図で空の比率が高い。"
+                  ></textarea>
+                  <div class="asset-desc-error" style="display:none;">用途説明を入力してください。</div>
+                </div>
+                {% endif %}
               </div>
-            </div>
-            {% endfor %}
+              {% endfor %}
+            {% else %}
+              {% for img in images %}
+              <div class="asset-select-item" data-asset-id="{{ img.pk }}">
+                <label class="asset-check-label">
+                  <input type="checkbox" name="image" value="{{ img.pk }}" class="asset-checkbox">
+                  <span class="asset-name">{{ img.title }}</span>
+                </label>
+                <div class="asset-desc-wrap" style="display:none;">
+                  <p class="asset-desc-label">このJobでの用途・使い方 <span class="req">*</span></p>
+                  <textarea
+                    name="image_description_{{ img.pk }}"
+                    rows="2"
+                    placeholder="例: オープニングシーンの背景として使用。横長構図で空の比率が高い。"
+                  ></textarea>
+                  <div class="asset-desc-error" style="display:none;">用途説明を入力してください。</div>
+                </div>
+              </div>
+              {% endfor %}
+            {% endif %}
           </div>
           <p class="checkbox-limit-hint" id="image-limit-hint">0 / 10 枚選択中</p>
           <p class="field-hint">複数選択可。選択した各画像にこのJobでの用途説明を必ず入力してください。</p>
         {% else %}
           <p class="field-hint" style="color:#f87171;">
-            このチャンネルに登録された画像がありません。上の「＋ 画像を追加」から追加してください。
+            このチャンネルに登録された画像がありません。<a href="{% url 'aivideo_component:media_manage' channel_id=channel_id %}" style="color:#a78bfa;">素材管理</a>から追加してください。
           </p>
         {% endif %}
         {% if form.image.errors %}
@@ -534,32 +522,72 @@
 
       <!-- 音声選択 -->
       <div class="field-group">
-        <label class="field-label">使用する音声 / BGM（最大10個）</label>
-        {% if has_audios %}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+          <label class="field-label" style="margin-bottom:0;">使用する音声 / BGM（最大10個）</label>
+          <a href="{% url 'aivideo_component:media_manage' channel_id=channel_id %}" style="font-size:0.75rem;color:#a78bfa;text-decoration:none;display:inline-flex;align-items:center;gap:0.3rem;">🗂 素材管理</a>
+        </div>
+        {% if has_audios or filter_result.invalid_audios %}
           <div class="asset-select-list" id="audio-checkbox-list">
-            {% for aud in audios %}
-            <div class="asset-select-item" data-asset-id="{{ aud.pk }}">
-              <label class="asset-check-label">
-                <input type="checkbox" name="audio" value="{{ aud.pk }}" class="asset-checkbox">
-                <span class="asset-name">{{ aud.title }}</span>
-              </label>
-              <div class="asset-desc-wrap" style="display:none;">
-                <p class="asset-desc-label">このJobでの用途・使い方 <span class="req">*</span></p>
-                <textarea
-                  name="audio_description_{{ aud.pk }}"
-                  rows="2"
-                  placeholder="例: BGMとして全編に使用。明るいテンポでオープニングに最適。"
-                ></textarea>
-                <div class="asset-desc-error" style="display:none;">用途説明を入力してください。</div>
+            {% if filter_result %}
+              {% for fa in filter_result.audios %}
+              <div class="asset-select-item{% if not fa.is_valid %} is-filtered-invalid{% endif %}" data-asset-id="{{ fa.audio.pk }}">
+                <label class="asset-check-label">
+                  <input type="checkbox" name="audio" value="{{ fa.audio.pk }}" class="asset-checkbox"
+                         {% if not fa.is_valid %}disabled{% endif %}>
+                  <span class="asset-name">{{ fa.audio.title }}</span>
+                  {% if not fa.is_valid %}
+                    <span class="vstatus-badge vstatus-invalid" style="margin-left:auto;flex-shrink:0;">✕ 使用不可</span>
+                  {% elif fa.warnings %}
+                    <span class="vstatus-badge vstatus-warning" style="margin-left:auto;flex-shrink:0;">⚠ 要確認</span>
+                  {% endif %}
+                </label>
+                {% if not fa.is_valid %}
+                  <div class="asset-filter-reasons">
+                    {% for err in fa.errors %}<p>{{ err }}</p>{% endfor %}
+                  </div>
+                {% elif fa.warnings %}
+                  <div class="asset-filter-reasons asset-filter-warnings">
+                    {% for w in fa.warnings %}<p>{{ w }}</p>{% endfor %}
+                  </div>
+                {% endif %}
+                {% if fa.is_valid %}
+                <div class="asset-desc-wrap" style="display:none;">
+                  <p class="asset-desc-label">このJobでの用途・使い方 <span class="req">*</span></p>
+                  <textarea
+                    name="audio_description_{{ fa.audio.pk }}"
+                    rows="2"
+                    placeholder="例: BGMとして全編に使用。明るいテンポでオープニングに最適。"
+                  ></textarea>
+                  <div class="asset-desc-error" style="display:none;">用途説明を入力してください。</div>
+                </div>
+                {% endif %}
               </div>
-            </div>
-            {% endfor %}
+              {% endfor %}
+            {% else %}
+              {% for aud in audios %}
+              <div class="asset-select-item" data-asset-id="{{ aud.pk }}">
+                <label class="asset-check-label">
+                  <input type="checkbox" name="audio" value="{{ aud.pk }}" class="asset-checkbox">
+                  <span class="asset-name">{{ aud.title }}</span>
+                </label>
+                <div class="asset-desc-wrap" style="display:none;">
+                  <p class="asset-desc-label">このJobでの用途・使い方 <span class="req">*</span></p>
+                  <textarea
+                    name="audio_description_{{ aud.pk }}"
+                    rows="2"
+                    placeholder="例: BGMとして全編に使用。明るいテンポでオープニングに最適。"
+                  ></textarea>
+                  <div class="asset-desc-error" style="display:none;">用途説明を入力してください。</div>
+                </div>
+              </div>
+              {% endfor %}
+            {% endif %}
           </div>
           <p class="checkbox-limit-hint" id="audio-limit-hint">0 / 10 個選択中</p>
           <p class="field-hint">複数選択可。選択した各音声にこのJobでの用途説明を必ず入力してください。</p>
         {% else %}
           <p class="field-hint" style="color:#f87171;">
-            このチャンネルに登録された音声がありません。上の「＋ 音声を追加」から追加してください。
+            このチャンネルに登録された音声がありません。<a href="{% url 'aivideo_component:media_manage' channel_id=channel_id %}" style="color:#a78bfa;">素材管理</a>から追加してください。
           </p>
         {% endif %}
         {% if form.audio.errors %}
@@ -594,8 +622,8 @@
 
       <!-- ボタン -->
       <div class="form-actions">
-        <a href="{% url 'google_auth:youtube_select' %}" class="btn-back">← チャンネル選択に戻る</a>
-        <button type="submit" class="btn-primary">生成AIを選択する →</button>
+        <a href="{% url 'aivideo_component:provider_select' channel_id=channel_id %}" class="btn-back">← 生成AI選択に戻る</a>
+        <button type="submit" class="btn-primary">動画を生成する →</button>
       </div>
 
     </form>
