@@ -39,6 +39,7 @@ from temporal.activities.video_metadata.interfaces import (
 )
 from temporal.activities.video_metadata.pipeline.audio_extractor import (
     AudioExtractionError,
+    NoAudioStreamError,
     extract_audio_from_video,
 )
 from temporal.activities.video_metadata.pipeline.summarizer import (
@@ -135,6 +136,10 @@ class OpenAIVideoMetadataService:
                 model=self._gpt_model,
             )
 
+        except NoAudioStreamError:
+            # AI 生成動画など音声なし動画はスキップして空の結果を返す
+            logger.info("[job=%s] No audio stream in video, skipping transcription", input.job_id)
+            return AnalyzeVideoContentOutput(summary="", detected_topics=[])
         except (AudioExtractionError, TranscriptionError, SummarizationError):
             raise  # Temporal に伝播させてリトライを任せる
         finally:
@@ -171,11 +176,18 @@ class OpenAIVideoMetadataService:
         )
 
         lang_note = f"（言語: {input.language}）" if input.language != "ja" else ""
-        user_message = (
-            f"以下の情報をもとに YouTube 動画のメタデータを生成してください{lang_note}。\n\n"
-            f"■ 動画の要約:\n{input.video_summary}\n\n"
-            f"■ 生成プロンプト:\n{input.prompt_text}"
-        )
+        if input.video_summary:
+            user_message = (
+                f"以下の情報をもとに YouTube 動画のメタデータを生成してください{lang_note}。\n\n"
+                f"■ 動画の要約:\n{input.video_summary}\n\n"
+                f"■ 生成プロンプト:\n{input.prompt_text}"
+            )
+        else:
+            # 音声なし動画など要約が取得できない場合はプロンプトのみで生成
+            user_message = (
+                f"以下の動画生成プロンプトをもとに YouTube 動画のメタデータを生成してください{lang_note}。\n\n"
+                f"■ 生成プロンプト:\n{input.prompt_text}"
+            )
 
         client = openai.AsyncOpenAI(api_key=self._api_key)
 

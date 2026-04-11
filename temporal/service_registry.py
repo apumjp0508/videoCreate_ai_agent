@@ -86,6 +86,7 @@ def _build_registry() -> list[ActivityGroupConfig]:
         LocalVideoGenerationService,
     )
     from temporal.activities.video_generation.pika import PikaVideoGenerationService
+    from temporal.activities.video_generation.replicate_service import MinimaxVideoGenerationService
 
     # ── video_metadata ────────────────────────────────────────
     from temporal.activities.video_metadata import dummy as vm_dummy
@@ -123,7 +124,9 @@ def _build_registry() -> list[ActivityGroupConfig]:
                 # submit / poll / fetch_generated はダミー（外部 AI API を呼ばない）。
                 # save_generated_video はダウンロードをスキップしてプレースホルダーを DB に保存する。
                 APP_ENV_LOCAL:   lambda: LocalVideoGenerationService(),
-                APP_ENV_STAGING: lambda: PikaVideoGenerationService(),
+                # staging では Replicate minimax/video-01 を使う。
+                # テキスト + 画像（first_frame_image）から動画を生成する。
+                APP_ENV_STAGING: lambda: MinimaxVideoGenerationService(),
             },
         ),
         ActivityGroupConfig(

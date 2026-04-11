@@ -61,6 +61,19 @@ PROVIDERS = [
             {"model_name": "ray2-flash",    "is_active": True},
         ],
     },
+    {
+        "provider_key": "replicate",
+        "provider_name": "Replicate",
+        "api_base_url": "https://api.replicate.com/v1",
+        "docs_url": "https://replicate.com/docs",
+        "is_active": True,
+        "models": [
+            # テキスト + 画像 → 動画生成
+            {"model_name": "minimax/video-01",        "is_active": True},
+            # 動画アップスケール（4K化・FPS補完）
+            {"model_name": "topazlabs/video-upscale", "is_active": True},
+        ],
+    },
 ]
 
 
