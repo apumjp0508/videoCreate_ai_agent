@@ -1,56 +1,49 @@
 """
 バリデーター registry。
 
-provider_key → ContentValidatorProtocol 準拠のバリデーターを返す唯一の窓口。
+provider_key → DbDrivenContentValidator を返す唯一の窓口。
 View はこの関数だけを呼べばよく、個々のバリデータークラスを知る必要はない。
 
 新しいプロバイダーを追加するときは:
-  1. providers/ に新しいバリデーターファイルを作る
-  2. _REGISTRY にエントリを1行追加する
-  それだけでよい。View / Workflow 側は変更不要。
+  1. DB の video_ai_providers にレコードを追加する
+  2. video_ai_provider_validation_configs に条件レコードを追加する
+  コードの変更は不要。
 """
 from __future__ import annotations
 
 from aivideo_component.validation.protocol import (
     ContentValidationInput,
     ContentValidationResult,
-    ContentValidatorProtocol,
 )
-from aivideo_component.validation.providers.kling import KlingContentValidator
-from aivideo_component.validation.providers.pika import PikaContentValidator
-from aivideo_component.validation.providers.runway import RunwayContentValidator
+from aivideo_component.validation.service import (
+    DbDrivenContentValidator,
+    ProviderConfigNotFoundError,
+    ProviderConfigRepository,
+)
 
-# ── プロバイダーキー → バリデーターのマッピング ─────────────────
-# forms.py の AI_PROVIDERS の id と一致させること
-_REGISTRY: dict[str, ContentValidatorProtocol] = {
-    'runway': RunwayContentValidator(),
-    'pika':   PikaContentValidator(),
-    'kling':  KlingContentValidator(),
-}
+_repo = ProviderConfigRepository()
 
 
 class UnknownProviderError(ValueError):
-    """registry に未登録の provider_key が指定された場合。"""
+    """DB に設定が存在しない provider_key が指定された場合。"""
 
 
-def get_validator(provider_key: str) -> ContentValidatorProtocol:
+def get_validator(provider_key: str) -> DbDrivenContentValidator:
     """
-    provider_key に対応するバリデーターを返す。
+    provider_key に対応する DB 駆動バリデーターを返す。
 
     Args:
         provider_key: "runway" | "pika" | "kling" など
     Returns:
-        ContentValidatorProtocol 準拠のバリデーターインスタンス
+        DbDrivenContentValidator インスタンス
     Raises:
-        UnknownProviderError: 登録されていない provider_key の場合
+        UnknownProviderError: DB に設定レコードが存在しない場合
     """
-    validator = _REGISTRY.get(provider_key)
-    if validator is None:
-        raise UnknownProviderError(
-            f"バリデーターが登録されていません: provider_key={provider_key!r}  "
-            f"登録済み={list(_REGISTRY.keys())}"
-        )
-    return validator
+    try:
+        config = _repo.get_by_provider_key(provider_key)
+    except ProviderConfigNotFoundError as e:
+        raise UnknownProviderError(str(e)) from e
+    return DbDrivenContentValidator(config)
 
 
 def validate_content(input: ContentValidationInput) -> ContentValidationResult:
@@ -63,6 +56,6 @@ def validate_content(input: ContentValidationInput) -> ContentValidationResult:
     Returns:
         ContentValidationResult
     Raises:
-        UnknownProviderError: 未登録の provider_key の場合
+        UnknownProviderError: DB に設定レコードが存在しない場合
     """
     return get_validator(input.provider_key).validate(input)

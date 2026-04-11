@@ -1,0 +1,173 @@
+{% extends "admin_panel/base.html" %}
+
+{% block title %}バリデーション設定 - {{ provider.provider_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>バリデーション設定</h1>
+  <p>{{ provider.provider_name }} の入力コンテンツ要件を管理します</p>
+</div>
+
+<div class="card" style="max-width: 800px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2 style="font-size: 1rem;">{{ provider.provider_name }}</h2>
+    {% if action == 'edit' %}
+    <form method="post" action="{% url 'admin_panel:validation_config_delete' provider_id=provider.id %}"
+          onsubmit="return confirm('バリデーション設定を削除しますか？')">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger btn-sm">設定を削除</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <h3 style="font-size: 0.9rem; font-weight: 600; color: #2563eb; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #dbeafe;">画像設定</h3>
+
+    <div class="form-group">
+      <label>{{ form.image_allowed_mime_types.label }}</label>
+      {{ form.image_allowed_mime_types }}
+      {% if form.image_allowed_mime_types.errors %}
+        {% for error in form.image_allowed_mime_types.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+      {% endif %}
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div class="form-group">
+        <label>{{ form.image_max_size_bytes.label }}</label>
+        {{ form.image_max_size_bytes }}
+        {% if form.image_max_size_bytes.errors %}
+          {% for error in form.image_max_size_bytes.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+        {% endif %}
+      </div>
+      <div class="form-group">
+        <label>{{ form.image_max_size_soft_bytes.label }}</label>
+        {{ form.image_max_size_soft_bytes }}
+        {% if form.image_max_size_soft_bytes.errors %}
+          {% for error in form.image_max_size_soft_bytes.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+        {% endif %}
+      </div>
+      <div class="form-group">
+        <label>{{ form.image_min_dimension.label }}</label>
+        {{ form.image_min_dimension }}
+        {% if form.image_min_dimension.errors %}
+          {% for error in form.image_min_dimension.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+        {% endif %}
+      </div>
+      <div class="form-group">
+        <label>{{ form.image_max_dimension.label }}</label>
+        {{ form.image_max_dimension }}
+        {% if form.image_max_dimension.errors %}
+          {% for error in form.image_max_dimension.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+        {% endif %}
+      </div>
+      <div class="form-group">
+        <label>{{ form.image_min_dimension_recommended.label }}</label>
+        {{ form.image_min_dimension_recommended }}
+        {% if form.image_min_dimension_recommended.errors %}
+          {% for error in form.image_min_dimension_recommended.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+        {% endif %}
+      </div>
+      <div class="form-group">
+        <label>{{ form.image_max_dimension_recommended.label }}</label>
+        {{ form.image_max_dimension_recommended }}
+        {% if form.image_max_dimension_recommended.errors %}
+          {% for error in form.image_max_dimension_recommended.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{ form.image_allowed_aspect_ratios.label }}</label>
+      {{ form.image_allowed_aspect_ratios }}
+      <div style="font-size: 0.8rem; color: #888; margin-top: 4px;">例: 16:9, 9:16, 1:1　空白=制限なし</div>
+      {% if form.image_allowed_aspect_ratios.errors %}
+        {% for error in form.image_allowed_aspect_ratios.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+      {% endif %}
+    </div>
+
+    <div class="form-group">
+      <label class="checkbox-label">
+        <input type="checkbox" name="{{ form.image_aspect_ratio_required.html_name }}"
+               {% if form.image_aspect_ratio_required.value %}checked{% endif %}>
+        {{ form.image_aspect_ratio_required.label }}
+      </label>
+    </div>
+
+    <h3 style="font-size: 0.9rem; font-weight: 600; color: #059669; margin: 20px 0 12px; padding-bottom: 6px; border-bottom: 1px solid #d1fae5;">音声設定</h3>
+
+    <div class="form-group">
+      <label class="checkbox-label">
+        <input type="checkbox" name="{{ form.audio_is_supported.html_name }}"
+               {% if form.audio_is_supported.value %}checked{% endif %}>
+        {{ form.audio_is_supported.label }}
+      </label>
+    </div>
+
+    <div class="form-group">
+      <label>{{ form.audio_unsupported_message.label }}</label>
+      {{ form.audio_unsupported_message }}
+      {% if form.audio_unsupported_message.errors %}
+        {% for error in form.audio_unsupported_message.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+      {% endif %}
+    </div>
+
+    <div class="form-group">
+      <label>{{ form.audio_allowed_mime_types.label }}</label>
+      {{ form.audio_allowed_mime_types }}
+      <div style="font-size: 0.8rem; color: #888; margin-top: 4px;">空白=共通チェックのみ</div>
+      {% if form.audio_allowed_mime_types.errors %}
+        {% for error in form.audio_allowed_mime_types.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+      {% endif %}
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div class="form-group">
+        <label>{{ form.audio_max_size_bytes.label }}</label>
+        {{ form.audio_max_size_bytes }}
+        {% if form.audio_max_size_bytes.errors %}
+          {% for error in form.audio_max_size_bytes.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+        {% endif %}
+      </div>
+      <div class="form-group">
+        <label>{{ form.audio_max_duration_sec.label }}</label>
+        {{ form.audio_max_duration_sec }}
+        {% if form.audio_max_duration_sec.errors %}
+          {% for error in form.audio_max_duration_sec.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+        {% endif %}
+      </div>
+      <div class="form-group">
+        <label>{{ form.audio_min_sample_rate.label }}</label>
+        {{ form.audio_min_sample_rate }}
+        {% if form.audio_min_sample_rate.errors %}
+          {% for error in form.audio_min_sample_rate.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+        {% endif %}
+      </div>
+      <div class="form-group">
+        <label>{{ form.audio_max_sample_rate.label }}</label>
+        {{ form.audio_max_sample_rate }}
+        {% if form.audio_max_sample_rate.errors %}
+          {% for error in form.audio_max_sample_rate.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{ form.audio_allowed_channels.label }}</label>
+      {{ form.audio_allowed_channels }}
+      <div style="font-size: 0.8rem; color: #888; margin-top: 4px;">空白=共通チェックのみ</div>
+      {% if form.audio_allowed_channels.errors %}
+        {% for error in form.audio_allowed_channels.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+      {% endif %}
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">
+        {% if action == 'create' %}作成{% else %}保存{% endif %}
+      </button>
+      <a href="{% url 'admin_panel:provider_list' %}" class="btn btn-secondary">キャンセル</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
