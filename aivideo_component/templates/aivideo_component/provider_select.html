@@ -65,6 +65,27 @@
   .breadcrumb a:hover { text-decoration: underline; color: #a5b4fc; }
   .breadcrumb .sep { color: #475569; }
 
+  /* ===== Flow step indicator ===== */
+  .flow-steps {
+    display: flex; align-items: center;
+    margin-bottom: 2rem; overflow-x: auto; padding-bottom: 2px;
+  }
+  .flow-step { display: flex; align-items: center; gap: 0.45rem; white-space: nowrap; }
+  .step-node {
+    width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.62rem; font-weight: 800;
+  }
+  .step-label { font-size: 0.74rem; font-weight: 600; }
+  .flow-connector { flex: 1; min-width: 20px; height: 1px; margin: 0 0.4rem; background: rgba(255,255,255,0.1); }
+  .flow-step.done .step-node   { background: rgba(74,222,128,0.18); border: 1.5px solid rgba(74,222,128,0.45); color: #4ade80; }
+  .flow-step.done .step-label  { color: #4ade80; }
+  .flow-step.done  + .flow-connector { background: rgba(74,222,128,0.3); }
+  .flow-step.active .step-node  { background: linear-gradient(135deg,#6337ff,#00c8ff); color: #fff; border: none; }
+  .flow-step.active .step-label { color: #f1f5f9; font-weight: 700; }
+  .flow-step.upcoming .step-node  { background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,255,255,0.12); color: #475569; }
+  .flow-step.upcoming .step-label { color: #475569; }
+
   /* ===== Page heading ===== */
   .page-eyebrow {
     font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
@@ -280,17 +301,42 @@
   <nav class="breadcrumb">
     <a href="{% url 'accounts:dashboard' %}">ダッシュボード</a>
     <span class="sep">›</span>
-    <a href="{% url 'aivideo_component:content_select' channel_id=channel_id %}">コンテンツ選択</a>
+    <a href="{% url 'google_auth:youtube_select' %}">チャンネル選択</a>
+    <span class="sep">›</span>
+    <a href="{% url 'aivideo_component:creation_hub' channel_id=channel_id %}">動画作成</a>
     <span class="sep">›</span>
     <span>生成AI選択</span>
   </nav>
+
+  <!-- フローインジケータ -->
+  <div class="flow-steps">
+    <div class="flow-step done">
+      <div class="step-node">✓</div>
+      <span class="step-label">チャンネル選択</span>
+    </div>
+    <div class="flow-connector"></div>
+    <div class="flow-step done">
+      <div class="step-node">✓</div>
+      <span class="step-label">動画準備</span>
+    </div>
+    <div class="flow-connector"></div>
+    <div class="flow-step active">
+      <div class="step-node">3</div>
+      <span class="step-label">AI選択</span>
+    </div>
+    <div class="flow-connector"></div>
+    <div class="flow-step upcoming">
+      <div class="step-node">4</div>
+      <span class="step-label">素材・設定</span>
+    </div>
+  </div>
 
   <!-- ページタイトル -->
   <p class="page-eyebrow">Step 3</p>
   <h1 class="page-title">生成AIを選択してください</h1>
   <p class="page-sub">
     動画の生成に使う AI プロバイダを選んでください。<br>
-    バッジは選択済みコンテンツとの事前適合チェック結果です。
+    次のステップで使用する素材（画像・音声）を選択します。
   </p>
 
   <!-- ===== フォーム ===== -->
@@ -410,10 +456,10 @@
 
       <!-- ボタン -->
       <div class="form-actions">
-        <a href="{% url 'aivideo_component:content_select' channel_id=channel_id %}" class="btn-back">
-          ← コンテンツ選択に戻る
+        <a href="{% url 'aivideo_component:creation_hub' channel_id=channel_id %}" class="btn-back">
+          ← 戻る
         </a>
-        <button type="submit" class="btn-primary" id="submit-btn">この AI で生成する →</button>
+        <button type="submit" class="btn-primary" id="submit-btn">素材を選択する →</button>
       </div>
 
     </form>
