@@ -85,8 +85,7 @@ def _build_registry() -> list[ActivityGroupConfig]:
         DjangoVideoGenerationService,
         LocalVideoGenerationService,
     )
-    from temporal.activities.video_generation.pika import PikaVideoGenerationService
-    from temporal.activities.video_generation.replicate_service import MinimaxVideoGenerationService
+    from temporal.activities.video_generation.runway_service import RunwayVideoGenerationService
 
     # ── video_metadata ────────────────────────────────────────
     from temporal.activities.video_metadata import dummy as vm_dummy
@@ -124,9 +123,9 @@ def _build_registry() -> list[ActivityGroupConfig]:
                 # submit / poll / fetch_generated はダミー（外部 AI API を呼ばない）。
                 # save_generated_video はダウンロードをスキップしてプレースホルダーを DB に保存する。
                 APP_ENV_LOCAL:   lambda: LocalVideoGenerationService(),
-                # staging では Replicate minimax/video-01 を使う。
-                # テキスト + 画像（first_frame_image）から動画を生成する。
-                APP_ENV_STAGING: lambda: MinimaxVideoGenerationService(),
+                # staging では Runway Gen-4 を使う。
+                # API キーは環境変数 RUNWAY_API_KEY から取得（.env に記載）。
+                APP_ENV_STAGING: lambda: RunwayVideoGenerationService(),
             },
         ),
         ActivityGroupConfig(

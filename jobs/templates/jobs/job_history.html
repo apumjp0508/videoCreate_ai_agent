@@ -155,6 +155,14 @@
     white-space:nowrap;
   }
   .btn-yt:hover { background:rgba(239,68,68,0.15); }
+  .btn-video {
+    padding:0.4rem 0.9rem; font-size:0.78rem; font-weight:600;
+    color:#34d399; background:rgba(52,211,153,0.08);
+    border:1px solid rgba(52,211,153,0.2); border-radius:8px;
+    text-decoration:none; transition:background 0.2s;
+    white-space:nowrap;
+  }
+  .btn-video:hover { background:rgba(52,211,153,0.15); }
 
   /* Error text */
   .error-text { font-size:0.75rem; color:#f87171; margin-top:0.3rem; }
@@ -241,12 +249,19 @@
 
         <!-- アクション -->
         <div class="job-actions">
+          {% if job.generated_video and job.generated_video.video_file %}
+            <a href="{{ job.generated_video.video_file.url }}" target="_blank" class="btn-video" id="video-btn-{{ job.id }}">
+              動画を見る
+            </a>
+          {% else %}
+            <a href="#" target="_blank" class="btn-video" id="video-btn-{{ job.id }}" style="display:none;">動画を見る</a>
+          {% endif %}
           {% if job.youtube_video_url %}
             <a href="{{ job.youtube_video_url }}" target="_blank" class="btn-yt" id="yt-btn-{{ job.id }}">
               YouTube で見る
             </a>
           {% else %}
-            <a href="{{ job.youtube_video_url }}" target="_blank" class="btn-yt"
+            <a href="#" target="_blank" class="btn-yt"
                id="yt-btn-{{ job.id }}" style="display:none;">YouTube で見る</a>
           {% endif %}
           <a href="{% url 'jobs:job_detail' job.id %}" class="btn-detail">詳細</a>
@@ -327,6 +342,13 @@
           meta.appendChild(span);
         }
       }
+    }
+
+    // 生成動画リンク
+    const videoBtn = document.getElementById('video-btn-' + id);
+    if (data.generated_video_url && videoBtn) {
+      videoBtn.href = data.generated_video_url;
+      videoBtn.style.display = '';
     }
 
     // YouTubeリンク

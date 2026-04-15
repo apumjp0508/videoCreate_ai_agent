@@ -22,6 +22,7 @@ jobs アプリの REST API ビュー。
     "completed_at": null,
     "youtube_video_id": "",
     "youtube_video_url": "",
+    "generated_video_url": "http://example.com/media/generated_videos/abc.mp4",
     "error_code": "",
     "error_message": "",
     "events": [
@@ -86,6 +87,16 @@ def job_status(request, job_id: int) -> JsonResponse:
         for e in job.events.order_by("created_at")[:50]
     ]
 
+    # ── 生成動画の media URL を解決 ──────────────────────────
+    generated_video_url = ""
+    if job.generated_video and job.generated_video.video_file:
+        try:
+            generated_video_url = request.build_absolute_uri(
+                job.generated_video.video_file.url
+            )
+        except Exception:
+            pass
+
     data = {
         "job_id":               job.id,
         "status":               job.status,
@@ -98,6 +109,7 @@ def job_status(request, job_id: int) -> JsonResponse:
         "completed_at":         job.completed_at.isoformat() if job.completed_at else None,
         "youtube_video_id":     job.youtube_video_id,
         "youtube_video_url":    job.youtube_video_url,
+        "generated_video_url":  generated_video_url,
         "error_code":           job.error_code,
         "error_message":        job.error_message,
         "events":               events,

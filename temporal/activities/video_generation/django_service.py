@@ -343,34 +343,55 @@ class DjangoVideoGenerationService(DummyVideoGenerationService):
             media_url=media_url,
         )
 
-    # ── build_ai_request（純粋ロジック）───────────────────────
+    # ── build_ai_request（DB 駆動・プロバイダー別ビルダー）────────
 
     async def build_ai_request(
         self, input: BuildAiRequestInput
     ) -> BuildAiRequestOutput:
         """
-        プロバイダー非依存の正規化ペイロードを組み立てる。
+        provider_key を元に DB からプロバイダー設定を取得し、
+        対応するビルダーにプロバイダー固有のリクエストペイロードを組み立てさせる。
 
-        各プロバイダー固有の submit_ai_request 実装がこのペイロードを
-        プロバイダー API フォーマットに変換する。
+        provider_key は fetch_ai_config が返す config_params["provider_key"] から取得する。
+        ビルダーの登録・ルーティングは request_builder/registry.py が担う。
         """
         logger.info(
             "build_ai_request  job_id=%s  model=%s",
             input.job_id, input.model_name,
         )
-        payload = {
-            # プロバイダー設定
-            "model": input.model_name,
-            "endpoint": input.api_endpoint,
-            # コンテンツ
-            "prompt": input.prompt_text,
-            "image_urls": input.image_ids,   # 実装時は ids → URLs に変換済みを想定
-            "audio_urls": input.audio_ids,   # 同上
-            # フォーマット / パラメータ
-            "format": input.format_settings,
-            "params": input.config_params,
-        }
-        return BuildAiRequestOutput(ai_request_payload=payload)
+
+        provider_key = input.config_params.get("provider_key", "")
+        if not provider_key:
+            raise ValueError(
+                f"build_ai_request: config_params に provider_key がありません  job_id={input.job_id}"
+            )
+
+        return await sync_to_async(self._build_sync)(input, provider_key)
+
+    @staticmethod
+    def _build_sync(input: BuildAiRequestInput, provider_key: str) -> BuildAiRequestOutput:
+        """
+        DB からプロバイダー設定を取得してビルダーを呼び出す（同期）。
+        Django ORM を使うため sync_to_async でラップして呼ぶこと。
+        """
+        from temporal.activities.video_generation.request_builder.registry import (
+            RequestBuilderNotFoundError,
+            RequestConfigNotFoundError,
+            get_builder,
+        )
+
+        try:
+            builder, config = get_builder(provider_key)
+        except RequestBuilderNotFoundError as exc:
+            raise ValueError(str(exc)) from exc
+        except RequestConfigNotFoundError as exc:
+            raise ValueError(str(exc)) from exc
+
+        logger.info(
+            "_build_sync  job_id=%s  provider=%s  builder=%s",
+            input.job_id, provider_key, type(builder).__name__,
+        )
+        return builder.build(input, config)
 
 
 # ─────────────────────────────────────────────────────────────

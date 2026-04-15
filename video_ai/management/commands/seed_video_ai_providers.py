@@ -6,7 +6,7 @@ PROVIDERS = [
     {
         'provider_key': 'runway',
         'provider_name': 'Runway',
-        'api_base_url': 'https://api.runwayml.com',
+        'api_base_url': 'https://api.dev.runwayml.com',
         'docs_url': 'https://docs.runwayml.com',
         'is_active': True,
     },
@@ -15,14 +15,14 @@ PROVIDERS = [
         'provider_name': 'Pika',
         'api_base_url': 'https://api.pika.art',
         'docs_url': 'https://docs.pika.art',
-        'is_active': True,
+        'is_active': False,
     },
     {
         'provider_key': 'kling',
         'provider_name': 'Kling',
         'api_base_url': 'https://api.klingai.com',
         'docs_url': 'https://docs.klingai.com',
-        'is_active': True,
+        'is_active': False,
     },
 ]
 

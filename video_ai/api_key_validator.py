@@ -155,19 +155,41 @@ class BearerTokenValidator(BaseApiKeyValidator):
 
 # ─────────────────────── プロバイダー別実装 ───────────────────────
 
-class RunwayApiKeyValidator(BearerTokenValidator):
+class RunwayApiKeyValidator(BaseApiKeyValidator):
     """
-    Runway: GET /v1/organization
-    必須ヘッダー: X-Runway-Version
+    Runway: GET https://api.dev.runwayml.com/v1/models
+    必須ヘッダー: X-Runway-Version: 2024-11-06
+
+    curl 相当:
+      curl -X GET "https://api.dev.runwayml.com/v1/models" \
+        -H "Authorization: Bearer <key>" \
+        -H "X-Runway-Version: 2024-11-06"
+
+    /v1/models エンドポイントは Runway API に存在しないため 404 が返るが、
+    404 = 認証レイヤーは通過している（キーが正しい証拠）。
+    401 / 403 のみキー無効と判定する。
     """
 
-    VALIDATION_PATH = "/v1/organization"
+    VALIDATION_URL = "https://api.dev.runwayml.com/v1/models"
 
-    def __init__(self):
-        super().__init__(
-            path=self.VALIDATION_PATH,
-            extra_headers={"X-Runway-Version": "2024-11-06"},
-        )
+    def validate(self, api_key: str, base_url: str) -> ApiKeyValidationResult:
+        headers = {
+            "Authorization":    f"Bearer {api_key}",
+            "X-Runway-Version": "2024-11-06",
+        }
+        result = self._get(self.VALIDATION_URL, headers)
+
+        # 404 は「ルートが存在しないが認証は通過」→ キー有効と見なす
+        # 401 / 403 はキー無効なのでそのまま返す
+        if result.http_status == 404:
+            return ApiKeyValidationResult(
+                http_status=404,
+                validation_endpoint=result.validation_endpoint,
+                error_code=None,
+                is_valid=True,
+            )
+
+        return result
 
 
 class PikaApiKeyValidator(BearerTokenValidator):
